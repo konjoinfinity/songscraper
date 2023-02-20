@@ -61,6 +61,19 @@ first=first.replace('[Verse 2]', 'Verse 2')
 first=first.replace('[Interlude]', 'Interlude')
 first=first.replace('[Bridge]', 'Bridge')
 first=first.replace('[Chorus]', 'Chorus')
+
+let middle = Math.floor(first.length / 2);
+let before = first.lastIndexOf(' ', middle);
+let after = first.indexOf(' ', middle + 1);
+
+if (middle - before < after - middle) {
+    middle = before;
+} else {
+    middle = after;
+}
+
+let string1 = first.substr(0, middle);
+let string2 = first.substr(middle + 1);
 		
 
 		/**
@@ -139,14 +152,24 @@ first=first.replace('[Chorus]', 'Chorus')
 			requestBody: {
 			  requests: [
 				{
-				insertText: {
-				   location: {
-						index: 28,
-						},
-						text: first
+					replaceAllText: {
+						replaceText: string1,
+						containsText: {
+							text: 'Intro/Verse 1 - Chords',
+							matchCase: true
+						}
 					}
 			  },
-			  { 
+			  {
+				replaceAllText: {
+					replaceText: string2,
+					containsText: {
+						text: 'Chorus - Chords',
+						matchCase: true
+					}
+				}
+		  	},
+			{ 
 				replaceAllText: {
 					replaceText: newTitle,
 					containsText: {
