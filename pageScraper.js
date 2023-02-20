@@ -145,7 +145,16 @@ first=first.replace('[Chorus]', 'Chorus')
 						},
 						text: first
 					}
-			  }
+			  },
+			  { 
+				replaceAllText: {
+					replaceText: newTitle,
+					containsText: {
+						text: 'Song Title - Artist Name',
+						matchCase: true
+					}
+				}
+			}
 			]
 			}
 		  });
