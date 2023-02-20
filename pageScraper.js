@@ -32,6 +32,22 @@ const scraperObject = {
 		let first = await page.$$eval('pre > span', options => {
 			return options.map(option => option.textContent);
 		});
+
+		let second = await page.$$eval('header > h1', options => {
+			return options.map(option => option.textContent);
+		});
+		let third = await page.$$eval('header > span > a', options => {
+			return options.map(option => option.textContent);
+		});
+
+		second = second.join('')
+		third = third.join('')
+		second=second.replace(' Chords', '')
+		third=third.replace('Edit', '')
+		let newTitle = second + ' - ' + third
+		console.log(second)
+		console.log(third)
+		console.log(newTitle)
 		
 		first =first.join('')
 first=first.replace('[Chorus]', 'Chorus')
@@ -108,7 +124,7 @@ first=first.replace('[Chorus]', 'Chorus')
 		  const drive = google.drive({version: 'v3', auth: authClient});
 		  const docs = google.docs({version: 'v1', auth: authClient});
 		  
-			var copyTitle = "Song Template for Scraping";
+			var copyTitle = newTitle;
 		let request = {
 		  name: copyTitle,
 			};
