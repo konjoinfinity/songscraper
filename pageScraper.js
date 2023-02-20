@@ -5,7 +5,6 @@ const path = require('path');
 const process = require('process');
 const {authenticate} = require('@google-cloud/local-auth');
 const {google} = require('googleapis');
-
 		
 let documentCopyId;
 		// If modifying these scopes, delete token.json.
@@ -20,7 +19,7 @@ let documentCopyId;
 		const CREDENTIALS_PATH = path.join(process.cwd(), 'creds.json');
 
 const scraperObject = {
-    url: 'https://tabs.ultimate-guitar.com/tab/vance-joy/riptide-chords-1237247',
+    url: 'https://tabs.ultimate-guitar.com/tab/ed-sheeran/i-see-fire-chords-1430599',
     async scraper(browser){
         let page = await browser.newPage();
 		console.log(`Navigating to ${this.url}...`);
@@ -28,43 +27,71 @@ const scraperObject = {
 		await page.goto(this.url);
 		// Wait for the required DOM to be rendered
 		await page.waitForSelector('.P8ReX');
-		// Get the text from song chord chart
-		let first = await page.$$eval('pre > span', options => {
-			return options.map(option => option.textContent);
-		});
 
-		let second = await page.$$eval('header > h1', options => {
+		let capo = await page.$$eval("table > tr:nth-child(4) > td > span", options =>{
 			return options.map(option => option.textContent);
-		});
-		let third = await page.$$eval('header > span > a', options => {
-			return options.map(option => option.textContent);
-		});
+		})
+		
+		//click -1 
+		// await page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(1)")
+			
+		capo = Number(capo.join('').charAt(0))
+		console.log(capo)
+
+		for(var i=0;i<capo;i++){
+			// click +1
+			await page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)")
+		}
+		 
+		console.log(capo)
+
+		let first;
+		let second;
+		let third;
+		let newTitle;
+		let middle;
+		let before;
+		let after;
+		let string1;
+		let string2;
+		// Get the text from song chord chart
+		setTimeout( async() => {
+			first = await page.$$eval('pre > span', options => {
+				return options.map(option => option.textContent);
+			});
+	
+			second = await page.$$eval('header > h1', options => {
+				return options.map(option => option.textContent);
+			});
+			third = await page.$$eval('header > span > a', options => {
+				return options.map(option => option.textContent);
+			});
 
 		second = second.join('')
 		third = third.join('')
 		second=second.replace(' Chords', '')
 		third=third.replace('Edit', '')
-		let newTitle = second + ' - ' + third
+		newTitle = second + ' - ' + third
 		console.log(second)
 		console.log(third)
 		console.log(newTitle)
 		
-		first =first.join('')
-first=first.replace('[Chorus]', 'Chorus')
-first=first.replace('[Chorus]', 'Chorus')
-first=first.replace('[Intro]', 'Intro')
-first=first.replace('[Pre-chorus]', 'Pre-chorus')
-first=first.replace('[Pre-chorus]', 'Pre-chorus')
-first=first.replace('[Pre-chorus]', 'Pre-chorus')
-first=first.replace('[Verse 1]', 'Verse 1')
-first=first.replace('[Verse 2]', 'Verse 2')
-first=first.replace('[Interlude]', 'Interlude')
-first=first.replace('[Bridge]', 'Bridge')
-first=first.replace('[Chorus]', 'Chorus')
+		first=first.join('')
+first=first.replaceAll('[Chorus]', 'Chorus')
+first=first.replaceAll('[Intro]', 'Intro')
+first=first.replaceAll('[Pre-chorus]', 'Pre-chorus')
+first=first.replaceAll('[Verse]', 'Verse')
+first=first.replaceAll('[Verse 1]', 'Verse 1')
+first=first.replaceAll('[Verse 2]', 'Verse 2')
+first=first.replaceAll('[Interlude]', 'Interlude')
+first=first.replaceAll('[Bridge]', 'Bridge')
+first=first.replaceAll('[Intro Tab]', 'Intro Tab')
+first=first.replaceAll('[Instrumental]', 'Instrumental')
+first=first.replaceAll('[Outro]', 'Outro')
 
-let middle = Math.floor(first.length / 2);
-let before = first.lastIndexOf(' ', middle);
-let after = first.indexOf(' ', middle + 1);
+middle = Math.floor(first.length / 2);
+before = first.lastIndexOf(' ', middle);
+after = first.indexOf(' ', middle + 1);
 
 if (middle - before < after - middle) {
     middle = before;
@@ -72,9 +99,8 @@ if (middle - before < after - middle) {
     middle = after;
 }
 
-let string1 = first.substr(0, middle);
-let string2 = first.substr(middle + 1);
-		
+string1 = first.substr(0, middle);
+string2 = first.substr(middle + 1);
 
 		/**
 		 * Reads previously authorized credentials from the save file.
@@ -137,13 +163,9 @@ let string2 = first.substr(middle + 1);
 		  const drive = google.drive({version: 'v3', auth: authClient});
 		  const docs = google.docs({version: 'v1', auth: authClient});
 		  
-			var copyTitle = newTitle;
-		let request = {
-		  name: copyTitle,
-			};
 			await drive.files.copy({
 		  fileId: '1-UZ-ABRd9w-YyarPdb7hPu2DqGiF1lrAyIRf3thoulQ',
-		  resource: request,
+		  resource: {name: newTitle},
 		}, async(err, driveResponse) => {
 		  documentCopyId = driveResponse.data.id;
 		  console.log(driveResponse.data.id)
@@ -188,6 +210,7 @@ let string2 = first.substr(middle + 1);
 		}
 		
 		authorize().then(listFiles).catch(console.error);
+	}, 100);
     }
 }
 
