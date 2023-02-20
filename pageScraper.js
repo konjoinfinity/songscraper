@@ -19,7 +19,7 @@ let documentCopyId;
 		const CREDENTIALS_PATH = path.join(process.cwd(), 'creds.json');
 
 const scraperObject = {
-    url: 'https://tabs.ultimate-guitar.com/tab/ed-sheeran/i-see-fire-chords-1430599',
+    url: 'https://tabs.ultimate-guitar.com/tab/bruno-mars/when-i-was-your-man-chords-1198871',
     async scraper(browser){
         let page = await browser.newPage();
 		console.log(`Navigating to ${this.url}...`);
