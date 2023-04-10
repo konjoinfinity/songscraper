@@ -103,6 +103,11 @@ string1 = first.substr(0, middle);
 console.log(string1)
 string2 = first.substr(middle + 1);
 
+// Sort string1 and string2 into requests
+// With bold and unbold based on regex patterns
+// Insert starting at specified section title
+// Read index location/range from last request 
+// Insert next request afer last request end
 
 		/**
 		 * Reads previously authorized credentials from the save file.
