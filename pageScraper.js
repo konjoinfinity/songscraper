@@ -72,9 +72,9 @@ const scraperObject = {
 		second=second.replace(' Chords', '')
 		third=third.replace('Edit', '')
 		newTitle = second + ' - ' + third
-		console.log(second)
-		console.log(third)
-		console.log(newTitle)
+		// console.log(second)
+		// console.log(third)
+		// console.log(newTitle)
 		
 		first=first.join('')
 first=first.replaceAll('[Chorus]', 'Chorus')
@@ -100,7 +100,9 @@ if (middle - before < after - middle) {
 }
 
 string1 = first.substr(0, middle);
+console.log(string1)
 string2 = first.substr(middle + 1);
+
 
 		/**
 		 * Reads previously authorized credentials from the save file.
@@ -203,15 +205,56 @@ string2 = first.substr(middle + 1);
 			]
 			}
 		  });
+
 		  console.log(updateResponse.data);
-		  return updateResponse.data;
+		  const titles = /(Chorus|Bridge|Outro|Intro|Verse|Verse 1|Verse 2|Verse 3|Instrumental|Interlude|Bridge|Intro Tab|Pre-chorus)/gi;
+		  const chords = /^[A-G][#b]?(m|maj|dim|aug|sus)?\d?(\/[A-G][#b]?)?(\s+[A-G][#b]?(m|maj|dim|aug|sus)?\d?(\/[A-G][#b]?)?)*$/;
+		  
+		  const requests = [];
+		  
+		  // Split the string by newline character and iterate over each line
+		  string1.split("\n").forEach((line) => {
+			// Check if the line matches either of the regex patterns
+			const isTitle = titles.test(line);
+			const isChord = chords.test(line.trim());
+		  
+			// If the line does not match either of the regex patterns, add an unbold request
+			if (!isTitle && !isChord) {
+			  requests.push({
+				updateTextStyle: {
+				  range: {
+					startIndex: line.length + 1,
+					endIndex: line.length + 1
+				  },
+				  textStyle: {
+					bold: false
+				  },
+				  fields: "bold"
+				}
+			  });
+			}
+		  });
+	  
+		  // Send the batchUpdate request to the API
+		  await docs.documents.batchUpdate({
+			  documentId: documentCopyId,
+			  requestBody: {
+			  requests: requests
+			  }
+			}).then((response) => {
+			  console.log("Text unbolded successfully");
+			  console.log(response)
+			}, (error) => {
+			  console.error("Error unbolding text: ", error);
+			});
 		});
-		
 		}
-		
 		authorize().then(listFiles).catch(console.error);
 	}, 100);
-    }
+
+	}
 }
+
+
 
 module.exports = scraperObject;
