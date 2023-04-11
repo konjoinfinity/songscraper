@@ -169,9 +169,72 @@ string2 = first.substr(middle + 1);
 		async function listFiles(authClient) {
 		  const drive = google.drive({version: 'v3', auth: authClient});
 		  const docs = google.docs({version: 'v1', auth: authClient});
+
+const titles = /(Chorus|Bridge|Outro|Intro|Verse|Verse 1|Verse 2|Verse 3|Instrumental|Interlude|Bridge|Intro Tab|Pre-chorus)/gi;
+const chords = /^[A-G][#b]?(m|maj|dim|aug|sus)?\d?(\/[A-G][#b]?)?(\s+[A-G][#b]?(m|maj|dim|aug|sus)?\d?(\/[A-G][#b]?)?)*$/;
+var indexCount = 4;		  
+const requests = [{ 
+	replaceAllText: {
+		replaceText: newTitle,
+		containsText: {
+			text: 'Song Title - Artist Name',
+			matchCase: true
+		}
+	}
+}];
+		  string1.split("\n").forEach((line) => {
+			const isTitle = titles.test(line);
+			const isChord = chords.test(line.trim());
+      
+			if (!isTitle && !isChord) {
+			  requests.push({
+      insertText: {
+        text: line,
+        location: {
+          index: indexCount + 1
+        }
+      }
+    });
+     requests.push({
+      updateTextStyle: {
+        range: {
+          startIndex: indexCount + 1,
+          endIndex: indexCount + line.length
+        },
+        textStyle: {
+          bold: false
+        },
+        fields: "bold"
+      }
+		});
+         indexCount = indexCount + line.length
+			} else {
+          requests.push({
+				insertText: {
+        text: line,
+        location: {
+          index: indexCount + 1
+        }
+      }
+			  });
+         requests.push({
+      updateTextStyle: {
+        range: {
+          startIndex: indexCount + 1,
+          endIndex: indexCount + line.length
+        },
+        textStyle: {
+          bold: true
+        },
+        fields: "bold"
+      }
+		});
+       indexCount = indexCount + line.length 
+        } 
+		  });
 		  
-			await drive.files.copy({
-		  fileId: '1-UZ-ABRd9w-YyarPdb7hPu2DqGiF1lrAyIRf3thoulQ',
+		await drive.files.copy({
+		  fileId: '1xM26IwbTj7L9VNXwDLyXV4ZWSdLUvRybDclq_u46My4',
 		  resource: {name: newTitle},
 		}, async(err, driveResponse) => {
 		  documentCopyId = driveResponse.data.id;
@@ -179,79 +242,10 @@ string2 = first.substr(middle + 1);
 		  const updateResponse = await docs.documents.batchUpdate({
 			documentId: documentCopyId,
 			requestBody: {
-			  requests: [
-				{
-					replaceAllText: {
-						replaceText: string1,
-						containsText: {
-							text: 'Intro/Verse 1 - Chords',
-							matchCase: true
-						}
-					}
-			  },
-			  {
-				replaceAllText: {
-					replaceText: string2,
-					containsText: {
-						text: 'Chorus - Chords',
-						matchCase: true
-					}
-				}
-		  	},
-			{ 
-				replaceAllText: {
-					replaceText: newTitle,
-					containsText: {
-						text: 'Song Title - Artist Name',
-						matchCase: true
-					}
-				}
-			}
-			]
-			}
-		  });
-
-		  console.log(updateResponse.data);
-		  const titles = /(Chorus|Bridge|Outro|Intro|Verse|Verse 1|Verse 2|Verse 3|Instrumental|Interlude|Bridge|Intro Tab|Pre-chorus)/gi;
-		  const chords = /^[A-G][#b]?(m|maj|dim|aug|sus)?\d?(\/[A-G][#b]?)?(\s+[A-G][#b]?(m|maj|dim|aug|sus)?\d?(\/[A-G][#b]?)?)*$/;
-		  
-		  const requests = [];
-		  
-		  // Split the string by newline character and iterate over each line
-		  string1.split("\n").forEach((line) => {
-			// Check if the line matches either of the regex patterns
-			const isTitle = titles.test(line);
-			const isChord = chords.test(line.trim());
-		  
-			// If the line does not match either of the regex patterns, add an unbold request
-			if (!isTitle && !isChord) {
-			  requests.push({
-				updateTextStyle: {
-				  range: {
-					startIndex: line.length + 1,
-					endIndex: line.length + 1
-				  },
-				  textStyle: {
-					bold: false
-				  },
-				  fields: "bold"
-				}
-			  });
-			}
-		  });
-	  
-		  // Send the batchUpdate request to the API
-		  await docs.documents.batchUpdate({
-			  documentId: documentCopyId,
-			  requestBody: {
 			  requests: requests
-			  }
-			}).then((response) => {
-			  console.log("Text unbolded successfully");
-			  console.log(response)
-			}, (error) => {
-			  console.error("Error unbolding text: ", error);
-			});
+			}
+		  });
+		  console.log(updateResponse.data);
 		});
 		}
 		authorize().then(listFiles).catch(console.error);
