@@ -185,7 +185,57 @@ const requests = [{
 		  string1.split("\n").forEach((line) => {
 			const isTitle = titles.test(line);
 			const isChord = chords.test(line.trim());
-      
+			if (!isTitle && !isChord) {
+			  requests.push({
+      insertText: {
+        text: line,
+        location: {
+          index: indexCount + 1
+        }
+      }
+    });
+     requests.push({
+      updateTextStyle: {
+        range: {
+          startIndex: indexCount + 1,
+          endIndex: indexCount + line.length
+        },
+        textStyle: {
+          bold: false
+        },
+        fields: "bold"
+      }
+		});
+         indexCount = indexCount + line.length
+			} else {
+          requests.push({
+				insertText: {
+        text: line,
+        location: {
+          index: indexCount + 1
+        }
+      }
+			  });
+         requests.push({
+      updateTextStyle: {
+        range: {
+          startIndex: indexCount + 1,
+          endIndex: indexCount + line.length
+        },
+        textStyle: {
+          bold: true
+        },
+        fields: "bold"
+      }
+		});
+       indexCount = indexCount + line.length 
+        } 
+		  });
+
+		  indexCount = indexCount + 5
+		  string2.split("\n").forEach((line) => {
+			const isTitle = titles.test(line);
+			const isChord = chords.test(line.trim());
 			if (!isTitle && !isChord) {
 			  requests.push({
       insertText: {
