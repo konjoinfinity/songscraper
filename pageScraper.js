@@ -232,8 +232,8 @@ const requests = [{
         } 
 		  });
 
-		  
-		  indexCount = indexCount + 5
+
+		  indexCount = indexCount + 2
 		  string2.split("\n").forEach((line) => {
 			const isTitle = titles.test(line);
 			const isChord = chords.test(line.trim());
