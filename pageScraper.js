@@ -6,6 +6,7 @@ const { authenticate } = require("@google-cloud/local-auth");
 const { google } = require("googleapis");
 
 let documentCopyId;
+var indexToSplit;
 
 const SCOPES = [
   "https://www.googleapis.com/auth/drive.metadata.readonly",
@@ -65,38 +66,53 @@ const scraperObject = {
       first = first.replaceAll("[Instrumental]", "Instrumental");
       first = first.replaceAll("[Outro]", "Outro");
 
-      middle = Math.floor(first.length / 2);
-      before = first.lastIndexOf(" ", middle);
-      after = first.indexOf(" ", middle + 1);
+	  let chartArr = first.split(/\r\n|\r|\n/);
+let newArr = chartArr.slice(0, 49);
 
-      if (middle - before < after - middle) {
-        middle = before;
-      } else {
-        middle = after;
-      }
+for (var i = 49; i > 34; i--) {
+  if (newArr[i] === " ") {
+    console.log("space");
+    console.log('index to split: ' + i);
+    indexToSplit = i;
+    break;
+  } else {
+    console.log("line");
+    console.log('index to split: ' + i);
+  }
+}
 
-      string1 = first.substr(0, middle);
-      console.log(string1);
-      string2 = first.substr(middle + 1);
+    //   middle = Math.floor(first.length / 2);
+    //   before = first.lastIndexOf(" ", middle);
+    //   after = first.indexOf(" ", middle + 1);
 
-// 	console.log(first.split(/\n/).length);
+    //   if (middle - before < after - middle) {
+    //     middle = before;
+    //   } else {
+    //     middle = after;
+    //   }
+
+    //   string1 = first.substr(0, middle);
+    //   console.log(string1);
+    //   string2 = first.substr(middle + 1);
+
 // let chartArr = first.split(/\n/);
-// let stringy = chartArr.slice(0, 49);
+// string1 = chartArr.slice(0, 49);
 
 // let indexToSplit;
 // for (var i = 49; i > 34; i--) {
-//   if (stringy[i] === " ") {
+//   if (string1[i] === " ") {
 //     console.log("space");
-//     console.log(i);
+//     console.log('index to split: ' + i);
 //     indexToSplit = i;
 //     break;
 //   } else {
 //     console.log("line");
-//     console.log(i);
+//     console.log('index to split: ' + i);
 //   }
 // }
 
-// let colChart1 = chartArr.slice(0, indexToSplit);
+// let colChart1 = string1.slice(0, indexToSplit);
+// console.log('col chart')
 // console.log(colChart1);
 // let colChart2 = chartArr.slice(indexToSplit + 1, chartArr.length);
 // console.log(colChart2);
@@ -185,11 +201,15 @@ const scraperObject = {
           },
         ];
 
-        string1.split(/\n/).forEach((line, index) => {
+        first.split(/\n/).forEach((line, index) => {
           const isTitle = titles.test(line);
+		  console.log(indexToSplit)
           console.log(index);
           const isChord = chords.test(line.trim());
+		  console.log(Number(index) <= Number(indexToSplit))
+		  if(Number(index) <= Number(indexToSplit)){
           if (!isTitle && !isChord) {
+			console.log(line)
             requests.push({
               insertText: {
                 text: line,
@@ -212,6 +232,7 @@ const scraperObject = {
             });
             indexCount = indexCount + line.length;
           } else {
+			console.log(line)
             requests.push({
               insertText: {
                 text: line,
@@ -235,17 +256,18 @@ const scraperObject = {
             indexCount = indexCount + line.length;
           }
 		  console.log(indexCount)
-        });
+        }
+	});
 
-		requests.push(  {
-            replaceAllText: {
-              replaceText: "2col2",
-              containsText: {
-                text: "col2",
-                matchCase: true,
-              },
-            },
-          })
+		// requests.push(  {
+        //     replaceAllText: {
+        //       replaceText: "2col2",
+        //       containsText: {
+        //         text: "col2",
+        //         matchCase: true,
+        //       },
+        //     },
+        //   })
 
 		//   string2.split("\n").forEach((line, index) => {
 		// 	const isTitle = titles.test(line);
@@ -301,23 +323,23 @@ const scraperObject = {
 
        
 		  console.log(JSON.stringify(requests))
-        // await drive.files.copy(
-        //   {
-        //     fileId: "1xM26IwbTj7L9VNXwDLyXV4ZWSdLUvRybDclq_u46My4",
-        //     resource: { name: newTitle },
-        //   },
-        //   async (err, driveResponse) => {
-        //     documentCopyId = driveResponse.data.id;
-        //     console.log(driveResponse.data.id);
-        //     const updateResponse = await docs.documents.batchUpdate({
-        //       documentId: documentCopyId,
-        //       requestBody: {
-        //         requests: requests,
-        //       },
-        //     });
-        //     console.log(updateResponse.data);
-        //   }
-        // );
+        await drive.files.copy(
+          {
+            fileId: "1xM26IwbTj7L9VNXwDLyXV4ZWSdLUvRybDclq_u46My4",
+            resource: { name: newTitle },
+          },
+          async (err, driveResponse) => {
+            documentCopyId = driveResponse.data.id;
+            console.log(driveResponse.data.id);
+            const updateResponse = await docs.documents.batchUpdate({
+              documentId: documentCopyId,
+              requestBody: {
+                requests: requests,
+              },
+            });
+            console.log(updateResponse.data);
+          }
+        );
       }
       authorize().then(listFiles).catch(console.error);
     }, 100);
