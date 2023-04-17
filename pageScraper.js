@@ -65,7 +65,17 @@ const scraperObject = {
       first = first.replaceAll("[Solo]", "Solo");
       first = first.replaceAll("[Post-Chorus]", "Post-Chorus");      
       first = first.replaceAll("[Bridge 1]", "Bridge 1");
-      first = first.replaceAll("[Bridge 2]", "Bridge 2");  
+      first = first.replaceAll("[Bridge 2]", "Bridge 2"); 
+      first = first.replaceAll("[Chorus 1]", "Chorus 1");
+      first = first.replaceAll("[Chorus 2]", "Chorus 2");
+      first = first.replaceAll("[Verse 3]", "Verse 3");
+      first = first.replaceAll("[Verse 4]", "Verse 4");
+      first = first.replaceAll("[Verse 5]", "Verse 5");
+      first = first.replaceAll("[Outro Solo]", "Outro Solo");
+      first = first.replaceAll("[Harmonies]", "Harmonies");
+      first = first.replaceAll("[Chorus/Outro]", "Chorus/Outro");
+      
+      
       
       let chartArr = first.split(/\r\n|\r|\n/);
       let newArr = chartArr.slice(0, 49);
