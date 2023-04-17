@@ -259,67 +259,72 @@ for (var i = 49; i > 34; i--) {
         }
 	});
 
-		// requests.push(  {
-        //     replaceAllText: {
-        //       replaceText: "2col2",
-        //       containsText: {
-        //         text: "col2",
-        //         matchCase: true,
-        //       },
-        //     },
-        //   })
+let chartArr = first.split(/\n/);
+let colChart2 = chartArr.slice(indexToSplit + 1, chartArr.length);
+let toWrite = JSON.stringify(colChart2)
+	requests.push({
+		replaceAllText: {
+		  replaceText: toWrite,
+		  containsText: {
+			text: "col2",
+			matchCase: true,
+		  },
+		},
+	  })
 
-		//   string2.split("\n").forEach((line, index) => {
-		// 	const isTitle = titles.test(line);
-		// 	console.log(index);
-		// 	const isChord = chords.test(line.trim());
-		// 	if (!isTitle && !isChord) {
-		// 	  requests.push({
-		// 		insertText: {
-		// 		  text: line,
-		// 		  location: {
-		// 			index: indexCount + 1,
-		// 		  },
-		// 		},
-		// 	  });
-		// 	  requests.push({
-		// 		updateTextStyle: {
-		// 		  range: {
-		// 			startIndex: indexCount + 1,
-		// 			endIndex: indexCount + line.length,
-		// 		  },
-		// 		  textStyle: {
-		// 			bold: false,
-		// 		  },
-		// 		  fields: "bold",
-		// 		},
-		// 	  });
-		// 	  indexCount = indexCount + line.length;
-		// 	} else {
-		// 	  requests.push({
-		// 		insertText: {
-		// 		  text: line,
-		// 		  location: {
-		// 			index: indexCount + 1,
-		// 		  },
-		// 		},
-		// 	  });
-		// 	  requests.push({
-		// 		updateTextStyle: {
-		// 		  range: {
-		// 			startIndex: indexCount + 1,
-		// 			endIndex: indexCount + line.length,
-		// 		  },
-		// 		  textStyle: {
-		// 			bold: true,
-		// 		  },
-		// 		  fields: "bold",
-		// 		},
-		// 	  });
-		// 	  indexCount = indexCount + line.length;
-		// 	}
-		// 	console.log(indexCount)
-		//   });
+	// indexCount = 1500
+	// console.log(JSON.stringify(requests))
+	// 	  first.split(/\n/).forEach((line, index) => {
+	// 		const isTitle = titles.test(line);
+	// 		const isChord = chords.test(line.trim());
+	// 		if(Number(index) > Number(indexToSplit) && Number(index) <= 70){
+	// 		if (!isTitle && !isChord) {
+	// 		  requests.push({
+	// 			insertText: {
+	// 			  text: line,
+	// 			  location: {
+	// 				index: indexCount + 1,
+	// 			  },
+	// 			},
+	// 		  });
+	// 		  requests.push({
+	// 			updateTextStyle: {
+	// 			  range: {
+	// 				startIndex: indexCount + 1,
+	// 				endIndex: indexCount + line.length,
+	// 			  },
+	// 			  textStyle: {
+	// 				bold: false,
+	// 			  },
+	// 			  fields: "bold",
+	// 			},
+	// 		  });
+	// 		  indexCount = indexCount + line.length;
+	// 		} else {
+	// 		  requests.push({
+	// 			insertText: {
+	// 			  text: line,
+	// 			  location: {
+	// 				index: indexCount + 1,
+	// 			  },
+	// 			},
+	// 		  });
+	// 		  requests.push({
+	// 			updateTextStyle: {
+	// 			  range: {
+	// 				startIndex: indexCount + 1,
+	// 				endIndex: indexCount + line.length,
+	// 			  },
+	// 			  textStyle: {
+	// 				bold: true,
+	// 			  },
+	// 			  fields: "bold",
+	// 			},
+	// 		  });
+	// 		  indexCount = indexCount + line.length;
+	// 		}
+	// 	}
+	// 	  });
 
        
 		  console.log(JSON.stringify(requests))
