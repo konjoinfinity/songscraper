@@ -62,6 +62,7 @@ const scraperObject = {
       first = first.replaceAll("[Intro Tab]", "Intro Tab");
       first = first.replaceAll("[Instrumental]", "Instrumental");
       first = first.replaceAll("[Outro]", "Outro");
+      first = first.replaceAll("[Solo]", "Solo");
 
       let chartArr = first.split(/\r\n|\r|\n/);
       let newArr = chartArr.slice(0, 49);
