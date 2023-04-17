@@ -1,4 +1,4 @@
-const songJSON = require("./songTemplate.json");
+
 const fs = require("fs").promises;
 const path = require("path");
 const process = require("process");
@@ -30,9 +30,6 @@ const scraperObject = {
     let second;
     let third;
     let newTitle;
-    let middle;
-    let before;
-    let after;
     let string1;
     let string2;
 
@@ -66,62 +63,17 @@ const scraperObject = {
       first = first.replaceAll("[Instrumental]", "Instrumental");
       first = first.replaceAll("[Outro]", "Outro");
 
-	  let chartArr = first.split(/\r\n|\r|\n/);
-let newArr = chartArr.slice(0, 49);
+      let chartArr = first.split(/\r\n|\r|\n/);
+      let newArr = chartArr.slice(0, 49);
 
-for (var i = 49; i > 34; i--) {
-  if (newArr[i] === " ") {
-    console.log("space");
-    console.log('index to split: ' + i);
-    indexToSplit = i;
-    break;
-  } else {
-    console.log("line");
-    console.log('index to split: ' + i);
-  }
-}
-
-    //   middle = Math.floor(first.length / 2);
-    //   before = first.lastIndexOf(" ", middle);
-    //   after = first.indexOf(" ", middle + 1);
-
-    //   if (middle - before < after - middle) {
-    //     middle = before;
-    //   } else {
-    //     middle = after;
-    //   }
-
-    //   string1 = first.substr(0, middle);
-    //   console.log(string1);
-    //   string2 = first.substr(middle + 1);
-
-// let chartArr = first.split(/\n/);
-// string1 = chartArr.slice(0, 49);
-
-// let indexToSplit;
-// for (var i = 49; i > 34; i--) {
-//   if (string1[i] === " ") {
-//     console.log("space");
-//     console.log('index to split: ' + i);
-//     indexToSplit = i;
-//     break;
-//   } else {
-//     console.log("line");
-//     console.log('index to split: ' + i);
-//   }
-// }
-
-// let colChart1 = string1.slice(0, indexToSplit);
-// console.log('col chart')
-// console.log(colChart1);
-// let colChart2 = chartArr.slice(indexToSplit + 1, chartArr.length);
-// console.log(colChart2);
-
-      // Sort string1 and string2 into requests
-      // With bold and unbold based on regex patterns
-      // Insert starting at specified section title
-      // Read index location/range from last request
-      // Insert next request afer last request end
+      for (var i = 49; i > 34; i--) {
+        if (newArr[i] === " ") {
+          indexToSplit = i;
+          break;
+        } else {
+          console.log("this is a line: " + i);
+        }
+      }
 
       /**
        * Reads previously authorized credentials from the save file.
@@ -203,131 +155,70 @@ for (var i = 49; i > 34; i--) {
 
         first.split(/\n/).forEach((line, index) => {
           const isTitle = titles.test(line);
-		  console.log(indexToSplit)
-          console.log(index);
           const isChord = chords.test(line.trim());
-		  console.log(Number(index) <= Number(indexToSplit))
-		  if(Number(index) <= Number(indexToSplit)){
-          if (!isTitle && !isChord) {
-			console.log(line)
-            requests.push({
-              insertText: {
-                text: line,
-                location: {
-                  index: indexCount + 1,
+          if (Number(index) <= Number(indexToSplit)) {
+            if (!isTitle && !isChord) {
+              requests.push({
+                insertText: {
+                  text: line,
+                  location: {
+                    index: indexCount + 1,
+                  },
                 },
-              },
-            });
-            requests.push({
-              updateTextStyle: {
-                range: {
-                  startIndex: indexCount + 1,
-                  endIndex: indexCount + line.length,
+              });
+              requests.push({
+                updateTextStyle: {
+                  range: {
+                    startIndex: indexCount + 1,
+                    endIndex: indexCount + line.length,
+                  },
+                  textStyle: {
+                    bold: false,
+                  },
+                  fields: "bold",
                 },
-                textStyle: {
-                  bold: false,
+              });
+              indexCount = indexCount + line.length;
+            } else {
+              requests.push({
+                insertText: {
+                  text: line,
+                  location: {
+                    index: indexCount + 1,
+                  },
                 },
-                fields: "bold",
-              },
-            });
-            indexCount = indexCount + line.length;
-          } else {
-			console.log(line)
-            requests.push({
-              insertText: {
-                text: line,
-                location: {
-                  index: indexCount + 1,
+              });
+              requests.push({
+                updateTextStyle: {
+                  range: {
+                    startIndex: indexCount + 1,
+                    endIndex: indexCount + line.length,
+                  },
+                  textStyle: {
+                    bold: true,
+                  },
+                  fields: "bold",
                 },
-              },
-            });
-            requests.push({
-              updateTextStyle: {
-                range: {
-                  startIndex: indexCount + 1,
-                  endIndex: indexCount + line.length,
-                },
-                textStyle: {
-                  bold: true,
-                },
-                fields: "bold",
-              },
-            });
-            indexCount = indexCount + line.length;
+              });
+              indexCount = indexCount + line.length;
+            }
           }
-		  console.log(indexCount)
-        }
-	});
+        });
 
-let chartArr = first.split(/\n/);
-let colChart2 = chartArr.slice(indexToSplit + 1, chartArr.length);
-let toWrite = colChart2.join("\r\n");
-	requests.push({
-		replaceAllText: {
-		  replaceText: toWrite,
-		  containsText: {
-			text: "col2",
-			matchCase: true,
-		  },
-		},
-	  })
+        let chartArr = first.split(/\n/);
+        let colChart2 = chartArr.slice(indexToSplit + 1, chartArr.length);
+        let toWrite = colChart2.join("\r\n");
+        requests.push({
+          replaceAllText: {
+            replaceText: toWrite,
+            containsText: {
+              text: "col2",
+              matchCase: true,
+            },
+          },
+        });
 
-	// indexCount = 1500
-	// console.log(JSON.stringify(requests))
-	// 	  first.split(/\n/).forEach((line, index) => {
-	// 		const isTitle = titles.test(line);
-	// 		const isChord = chords.test(line.trim());
-	// 		if(Number(index) > Number(indexToSplit) && Number(index) <= 70){
-	// 		if (!isTitle && !isChord) {
-	// 		  requests.push({
-	// 			insertText: {
-	// 			  text: line,
-	// 			  location: {
-	// 				index: indexCount + 1,
-	// 			  },
-	// 			},
-	// 		  });
-	// 		  requests.push({
-	// 			updateTextStyle: {
-	// 			  range: {
-	// 				startIndex: indexCount + 1,
-	// 				endIndex: indexCount + line.length,
-	// 			  },
-	// 			  textStyle: {
-	// 				bold: false,
-	// 			  },
-	// 			  fields: "bold",
-	// 			},
-	// 		  });
-	// 		  indexCount = indexCount + line.length;
-	// 		} else {
-	// 		  requests.push({
-	// 			insertText: {
-	// 			  text: line,
-	// 			  location: {
-	// 				index: indexCount + 1,
-	// 			  },
-	// 			},
-	// 		  });
-	// 		  requests.push({
-	// 			updateTextStyle: {
-	// 			  range: {
-	// 				startIndex: indexCount + 1,
-	// 				endIndex: indexCount + line.length,
-	// 			  },
-	// 			  textStyle: {
-	// 				bold: true,
-	// 			  },
-	// 			  fields: "bold",
-	// 			},
-	// 		  });
-	// 		  indexCount = indexCount + line.length;
-	// 		}
-	// 	}
-	// 	  });
-
-       
-		  console.log(JSON.stringify(requests))
+        console.log(JSON.stringify(requests));
         await drive.files.copy(
           {
             fileId: "1xM26IwbTj7L9VNXwDLyXV4ZWSdLUvRybDclq_u46My4",
