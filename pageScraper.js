@@ -261,7 +261,7 @@ for (var i = 49; i > 34; i--) {
 
 let chartArr = first.split(/\n/);
 let colChart2 = chartArr.slice(indexToSplit + 1, chartArr.length);
-let toWrite = JSON.stringify(colChart2)
+let toWrite = colChart2.join("\r\n");
 	requests.push({
 		replaceAllText: {
 		  replaceText: toWrite,
