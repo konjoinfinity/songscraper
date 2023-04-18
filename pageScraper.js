@@ -231,6 +231,7 @@ const scraperObject = {
           }
         });
 
+		console.log(indexCount)
         let chartArr = first.split(/\n/);
         let colChart2 = chartArr.slice(indexToSplit + 1, chartArr.length);
         let toWrite = colChart2.join("\r\n");
@@ -243,6 +244,16 @@ const scraperObject = {
             },
           },
         });
+		
+		async function getNewSong(id) {
+			await docs.documents.get({
+				documentId: id,
+				fields: "body(content(table(tableRows(tableCells(content(paragraph(elements(endIndex,startIndex,textRun/content))))))))"
+			  }).then((response) => {
+						  console.log("Response", JSON.stringify(response.data.body.content));
+						},
+						(err) => { console.error("Execute error", err); });
+		}
 
         console.log(JSON.stringify(requests));
         await drive.files.copy(
@@ -258,10 +269,12 @@ const scraperObject = {
               requestBody: {
                 requests: requests,
               },
-            });
+            })
             console.log(updateResponse.data);
+			updateResponse.data && getNewSong(documentCopyId)
           }
         );
+		
       }
       authorize().then(listFiles).catch(console.error);
     }, 100);
