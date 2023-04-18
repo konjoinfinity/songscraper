@@ -250,7 +250,42 @@ const scraperObject = {
 				documentId: id,
 				fields: "body(content(table(tableRows(tableCells(content(paragraph(elements(endIndex,startIndex,textRun/content))))))))"
 			  }).then((response) => {
-						  console.log("Response", JSON.stringify(response.data.body.content));
+						  console.log("Response", JSON.stringify(response.data.body.content[2].table.tableRows[0].tableCells[1].content));
+						  response.data.body.content[2].table.tableRows[0].tableCells[1].content.forEach((entry) => {
+							const isTitle = titles.test(line);
+							const isChord = chords.test(line.trim());
+							if (Number(index) <= Number(indexToSplit)) {
+							  if (!isTitle && !isChord) {
+								requests.push({
+								  updateTextStyle: {
+									range: {
+									  startIndex: indexCount + 1,
+									  endIndex: indexCount + line.length,
+									},
+									textStyle: {
+									  bold: false,
+									},
+									fields: "bold",
+								  },
+								});
+								indexCount = indexCount + line.length;
+							  } else {
+								requests.push({
+								  updateTextStyle: {
+									range: {
+									  startIndex: indexCount + 1,
+									  endIndex: indexCount + line.length,
+									},
+									textStyle: {
+									  bold: true,
+									},
+									fields: "bold",
+								  },
+								});
+								indexCount = indexCount + line.length;
+							  }
+							}
+						  })
 						},
 						(err) => { console.error("Execute error", err); });
 		}
