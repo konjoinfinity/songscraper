@@ -49,55 +49,17 @@ const scraperObject = {
       second = second.replace(" Chords", "");
       third = third.replace("Edit", "");
       newTitle = second + " - " + third;
-
       first = first.join("");
 
-      console.log(first);
-      let sectionTitles = ["Chorus", "Verse", "Intro",]
+      let sectionTitles = ["Chorus", "Verse", "Verse 1", "Verse 2", "Intro", "Pre-chorus", "Interlude", "Bridge", "Intro Tab", 
+      "Instrumental", "Outro", "Solo", "Post-Chorus", "Bridge 1", "Bridge 2", "Chorus 1", "Chorus 2", "Verse 3", "Verse 4", 
+      "Verse 5", "Outro Solo", "Harmonies", "Chorus/Outro", "Pre-Chorus", "Chorus 3", "Chorus 4", "Refrain", "Bridge 3", 
+      "Transition", "Interlude Solo", "Verse 6", "Verse 7", "Pre-Chorus A", "Pre-Chorus B", "Pre-Verse", "Link", "Solo Part 1", 
+      "Solo Part 2", "Fill", "Intro 1", "Intro 2", "Riff", "Interlude 1", "Interlude 2", "Riff/Instrumental", "Coda"]
       
       sectionTitles.forEach((title) => {
       first = first.replaceAll(`[${title}]`, `${title}`);
       })
-      
-      console.log(first);
-
-      first = first.replaceAll("[Chorus]", "Chorus");
-      first = first.replaceAll("[Intro]", "Intro");
-      first = first.replaceAll("[Pre-chorus]", "Pre-chorus");
-      first = first.replaceAll("[Verse]", "Verse");
-      first = first.replaceAll("[Verse 1]", "Verse 1");
-      first = first.replaceAll("[Verse 2]", "Verse 2");
-      first = first.replaceAll("[Interlude]", "Interlude");
-      first = first.replaceAll("[Bridge]", "Bridge");
-      first = first.replaceAll("[Intro Tab]", "Intro Tab");
-      first = first.replaceAll("[Instrumental]", "Instrumental");
-      first = first.replaceAll("[Outro]", "Outro");
-      first = first.replaceAll("[Solo]", "Solo");
-      first = first.replaceAll("[Post-Chorus]", "Post-Chorus");      
-      first = first.replaceAll("[Bridge 1]", "Bridge 1");
-      first = first.replaceAll("[Bridge 2]", "Bridge 2"); 
-      first = first.replaceAll("[Chorus 1]", "Chorus 1");
-      first = first.replaceAll("[Chorus 2]", "Chorus 2");
-      first = first.replaceAll("[Verse 3]", "Verse 3");
-      first = first.replaceAll("[Verse 4]", "Verse 4");
-      first = first.replaceAll("[Verse 5]", "Verse 5");
-      first = first.replaceAll("[Outro Solo]", "Outro Solo");
-      first = first.replaceAll("[Harmonies]", "Harmonies");
-      first = first.replaceAll("[Chorus/Outro]", "Chorus/Outro");
-      first = first.replaceAll("[Pre-Chorus]", "Pre-Chorus");
-      first = first.replaceAll("[Chorus 3]", "Chorus 3");
-      first = first.replaceAll("[Chorus 4]", "Chorus 4");
-      first = first.replaceAll("[Refrain]", "Refrain");
-      first = first.replaceAll("[Bridge 3]", "Bridge 3");
-      first = first.replaceAll("[Transition]", "Transition");
-      first = first.replaceAll("[Interlude Solo]", "Interlude Solo");
-      first = first.replaceAll("[Verse 6]", "Verse 6");
-      first = first.replaceAll("[Verse 7]", "Verse 7");
-      first = first.replaceAll("[Pre-Chorus A]", "Pre-Chorus A");
-      first = first.replaceAll("[Pre-Chorus B]", "Pre-Chorus B");
-      first = first.replaceAll("[Pre-Verse]", "Pre-Verse");
-      first = first.replaceAll("[Link]", "Link");
-      
       
       let chartArr = first.split(/\r\n|\r|\n/);
       let newArr = chartArr.slice(0, 49);
