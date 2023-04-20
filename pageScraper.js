@@ -51,6 +51,16 @@ const scraperObject = {
       newTitle = second + " - " + third;
 
       first = first.join("");
+
+      console.log(first);
+      let sectionTitles = ["Chorus", "Verse", "Intro",]
+      
+      sectionTitles.forEach((title) => {
+      first = first.replaceAll(`[${title}]`, `${title}`);
+      })
+      
+      console.log(first);
+
       first = first.replaceAll("[Chorus]", "Chorus");
       first = first.replaceAll("[Intro]", "Intro");
       first = first.replaceAll("[Pre-chorus]", "Pre-chorus");
