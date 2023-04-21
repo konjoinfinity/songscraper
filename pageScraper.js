@@ -18,7 +18,7 @@ const TOKEN_PATH = path.join(process.cwd(), "token.json");
 const CREDENTIALS_PATH = path.join(process.cwd(), "creds.json");
 
 const scraperObject = {
-  url: "https://tabs.ultimate-guitar.com/tab/queen/bohemian-rhapsody-chords-1716013",
+  url: "https://tabs.ultimate-guitar.com/tab/frank-sinatra/fly-me-to-the-moon-chords-1054815",
   async scraper(browser) {
     let page = await browser.newPage();
     console.log(`Navigating to ${this.url}...`);
@@ -104,7 +104,7 @@ const scraperObject = {
       });
 
       let chartArr = first.split(/\r\n|\r|\n/);
-      let newArr = chartArr.slice(0, 49);
+      let newArr = chartArr.slice(0, 52);
 
       for (var i = 49; i > 34; i--) {
         if (newArr[i] === " ") {
