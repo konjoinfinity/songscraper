@@ -18,7 +18,7 @@ const TOKEN_PATH = path.join(process.cwd(), "token.json");
 const CREDENTIALS_PATH = path.join(process.cwd(), "creds.json");
 
 const scraperObject = {
-  url: "https://tabs.ultimate-guitar.com/tab/jason-mraz/im-yours-chords-373896",
+  url: "https://tabs.ultimate-guitar.com/tab/queen/bohemian-rhapsody-chords-1716013",
   async scraper(browser) {
     let page = await browser.newPage();
     console.log(`Navigating to ${this.url}...`);
