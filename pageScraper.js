@@ -18,7 +18,7 @@ const TOKEN_PATH = path.join(process.cwd(), "token.json");
 const CREDENTIALS_PATH = path.join(process.cwd(), "creds.json");
 
 const scraperObject = {
-  url: "https://tabs.ultimate-guitar.com/tab/frank-sinatra/fly-me-to-the-moon-chords-1054815",
+  url: "https://tabs.ultimate-guitar.com/tab/jason-mraz/im-yours-chords-373896",
   async scraper(browser) {
     let page = await browser.newPage();
     console.log(`Navigating to ${this.url}...`);
@@ -29,8 +29,6 @@ const scraperObject = {
     let second;
     let third;
     let newTitle;
-    let string1;
-    let string2;
 
     setTimeout(async () => {
       first = await page.$$eval("pre > span", (options) => {
@@ -198,6 +196,8 @@ const scraperObject = {
           const isChord = chords.test(line.trim());
           if (Number(index) <= Number(indexToSplit)) {
             if (!isTitle && !isChord) {
+              if(!line.includes("|")) {
+                //works but breaks the rest, need to test more
               requests.push({
                 insertText: {
                   text: line,
@@ -242,6 +242,7 @@ const scraperObject = {
               });
               indexCount = indexCount + line.length;
             }
+          }
           }
         });
 
@@ -292,6 +293,7 @@ const scraperObject = {
                     const isTitle = titles.test(line.paragraph.elements[0].textRun.content);
                     const isChord = chords.test(line.paragraph.elements[0].textRun.content.trim());
 					if (!isTitle && !isChord) {
+            if(!line.paragraph.elements[0].textRun.content.includes("|")) {
 						unboldRequests.push({
 						  updateTextStyle: {
 							range: {
@@ -304,6 +306,7 @@ const scraperObject = {
 							fields: "bold",
 						  },
 						});
+          }
 					  } 
                   }
                 )
