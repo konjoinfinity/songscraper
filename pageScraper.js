@@ -18,7 +18,7 @@ const TOKEN_PATH = path.join(process.cwd(), "token.json");
 const CREDENTIALS_PATH = path.join(process.cwd(), "creds.json");
 
 const scraperObject = {
-  url: "https://tabs.ultimate-guitar.com/tab/jason-mraz/im-yours-chords-373896",
+  url: "https://tabs.ultimate-guitar.com/tab/led-zeppelin/stairway-to-heaven-chords-91487",
   async scraper(browser) {
     let page = await browser.newPage();
     console.log(`Navigating to ${this.url}...`);
@@ -195,8 +195,7 @@ const scraperObject = {
           const isTitle = titles.test(line);
           const isChord = chords.test(line.trim());
           if (Number(index) <= Number(indexToSplit)) {
-            if (!isTitle && !isChord && !line.includes("|")) {
-                //works but breaks the rest, need to test more
+            if (!isTitle && !isChord && !line.includes("|") && !line.includes("x-") && !line.includes("-x") && !line.includes("N.C.")) {
               requests.push({
                 insertText: {
                   text: line,
@@ -290,7 +289,7 @@ const scraperObject = {
                     console.log(line.paragraph.elements[0].textRun.content);
                     const isTitle = titles.test(line.paragraph.elements[0].textRun.content);
                     const isChord = chords.test(line.paragraph.elements[0].textRun.content.trim());
-					if (!isTitle && !isChord && !line.paragraph.elements[0].textRun.content.includes("|")) {
+					if (!isTitle && !isChord && !line.paragraph.elements[0].textRun.content.includes("|") && !line.paragraph.elements[0].textRun.content.includes("-x") && !line.paragraph.elements[0].textRun.content.includes("x-") && !line.paragraph.elements[0].textRun.content.includes("N.C.")) {
 						unboldRequests.push({
 						  updateTextStyle: {
 							range: {
