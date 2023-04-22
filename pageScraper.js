@@ -195,8 +195,7 @@ const scraperObject = {
           const isTitle = titles.test(line);
           const isChord = chords.test(line.trim());
           if (Number(index) <= Number(indexToSplit)) {
-            if (!isTitle && !isChord) {
-              if(!line.includes("|")) {
+            if (!isTitle && !isChord && !line.includes("|")) {
                 //works but breaks the rest, need to test more
               requests.push({
                 insertText: {
@@ -242,7 +241,6 @@ const scraperObject = {
               });
               indexCount = indexCount + line.length;
             }
-          }
           }
         });
 
@@ -292,8 +290,7 @@ const scraperObject = {
                     console.log(line.paragraph.elements[0].textRun.content);
                     const isTitle = titles.test(line.paragraph.elements[0].textRun.content);
                     const isChord = chords.test(line.paragraph.elements[0].textRun.content.trim());
-					if (!isTitle && !isChord) {
-            if(!line.paragraph.elements[0].textRun.content.includes("|")) {
+					if (!isTitle && !isChord && !line.paragraph.elements[0].textRun.content.includes("|")) {
 						unboldRequests.push({
 						  updateTextStyle: {
 							range: {
@@ -306,7 +303,6 @@ const scraperObject = {
 							fields: "bold",
 						  },
 						});
-          }
 					  } 
                   }
                 )
