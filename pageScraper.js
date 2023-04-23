@@ -196,35 +196,18 @@ const scraperObject = {
           },
         ];
 
-        function checkRegex(str) {
-          let checkedStr = [];
-          let regexes = [
-            titles,
-            chords,
-            addCheck,
-            numTimes,
-            minMaj,
-            pipeOr,
-            xOrDash,
-            noChord,
-          ];
-          regexes.forEach((reg) => {
-            reg.test(str) ? checkedStr.push(true) : checkedStr.push(false);
-          });
-          return checkedStr.every((v) => v === false);
-        }
-
         first.split(/\n/).forEach((line, index) => {
-          const isTitles = titles.test(line)
-          const isChords = chords.test(line.trim())
-          const isAddCheck = addCheck.test(line)
-          const isNumTimes = numTimes.test(line)
-          const isMinMaj = minMaj.test(line)
-          const isPipeOr = pipeOr.test(line)
-          const isxOrDash = xOrDash.test(line)
-          const isNoChord = noChord.test(line)
+          let isTitles = titles.test(line)
+          let isChords = chords.test(line.trim())
+          let isAddCheck = addCheck.test(line)
+          let isNumTimes = numTimes.test(line)
+          let isMinMaj = minMaj.test(line.trim())
+          let isPipeOr = pipeOr.test(line)
+          let isxOrDash = xOrDash.test(line)
+          let isNoChord = noChord.test(line)
+          if(index === 1){console.log(JSON.stringify([isTitles, isChords, isAddCheck, isNumTimes, isMinMaj, isPipeOr, isxOrDash, isNoChord]))}
           if (Number(index) <= Number(indexToSplit)) {
-            if (!isTitles && !isChords && !isAddCheck && !isNumTimes && !isMinMaj && !isPipeOr && !isxOrDash && !isNoChord) {
+            if (!isTitles && !isChords && !isAddCheck && !isNumTimes && !isPipeOr && !isxOrDash && !isNoChord && !isMinMaj) {
               requests.push({
                 insertText: {
                   text: line,
@@ -316,8 +299,15 @@ const scraperObject = {
                 response.data.body.content[2].table.tableRows[0].tableCells[1].content.forEach(
                   (line) => {
                     console.log(line.paragraph.elements[0].textRun.content);
-                    let lineCheck = checkRegex(line.paragraph.elements[0].textRun.content);
-                    if (lineCheck === true) {
+                    let isTitles1 = titles.test(line.paragraph.elements[0].textRun.content)
+                    let isChords1 = chords.test(line.paragraph.elements[0].textRun.content.trim())
+                    let isAddCheck1 = addCheck.test(line.paragraph.elements[0].textRun.content)
+                    let isNumTimes1 = numTimes.test(line.paragraph.elements[0].textRun.content)
+                    let isMinMaj1 = minMaj.test(line.paragraph.elements[0].textRun.content)
+                    let isPipeOr1 = pipeOr.test(line.paragraph.elements[0].textRun.content)
+                    let isxOrDash1 = xOrDash.test(line.paragraph.elements[0].textRun.content)
+                    let isNoChord1 = noChord.test(line.paragraph.elements[0].textRun.content)
+                    if (!isTitles1 && !isChords1 && !isAddCheck1 && !isNumTimes1 && !isMinMaj1 && !isPipeOr1 && !isxOrDash1 && !isNoChord1) {
                       unboldRequests.push({
                         updateTextStyle: {
                           range: {
