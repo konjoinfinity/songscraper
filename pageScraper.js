@@ -201,11 +201,10 @@ const scraperObject = {
           let isChords = chords.test(line.trim())
           let isAddCheck = addCheck.test(line)
           let isNumTimes = numTimes.test(line)
-          let isMinMaj = minMaj.test(line.trim())
+          let isMinMaj = minMaj.test(line)
           let isPipeOr = pipeOr.test(line)
           let isxOrDash = xOrDash.test(line)
           let isNoChord = noChord.test(line)
-          if(index === 1){console.log(JSON.stringify([isTitles, isChords, isAddCheck, isNumTimes, isMinMaj, isPipeOr, isxOrDash, isNoChord]))}
           if (Number(index) <= Number(indexToSplit)) {
             if (!isTitles && !isChords && !isAddCheck && !isNumTimes && !isPipeOr && !isxOrDash && !isNoChord && !isMinMaj) {
               requests.push({
