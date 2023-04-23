@@ -173,11 +173,16 @@ const scraperObject = {
       async function listFiles(authClient) {
         const drive = google.drive({ version: "v3", auth: authClient });
         const docs = google.docs({ version: "v1", auth: authClient });
-
-        const titles = /(Chorus|Verse|Verse 1|Verse 2|Intro|Pre-chorus|Interlude|Bridge|Intro Tab|Instrumental|Outro|Solo|Post-Chorus|Bridge 1|Bridge 2|Chorus 1|Chorus 2|Verse 3|Verse 4|Verse 5|Outro Solo|Harmonies|Coda|Pre-Chorus|Chorus 3|Chorus 4|Refrain|Bridge 3|Transition|Interlude Solo|Verse 6|Verse 7|Pre-Chorus A|Pre-Chorus B|Pre-Verse|Link|Solo Part 1|Solo Part 2|Fill|Intro 1|Intro 2|Riff|Interlude 1|Interlude 2|Chorus\/Outro|Riff\/Instrumental)/gi;
-		
+        const titles =
+          /(Chorus|Verse|Verse 1|Verse 2|Intro|Pre-chorus|Interlude|Bridge|Intro Tab|Instrumental|Outro|Solo|Post-Chorus|Bridge 1|Bridge 2|Chorus 1|Chorus 2|Verse 3|Verse 4|Verse 5|Outro Solo|Harmonies|Coda|Pre-Chorus|Chorus 3|Chorus 4|Refrain|Bridge 3|Transition|Interlude Solo|Verse 6|Verse 7|Pre-Chorus A|Pre-Chorus B|Pre-Verse|Link|Solo Part 1|Solo Part 2|Fill|Intro 1|Intro 2|Riff|Interlude 1|Interlude 2|Chorus\/Outro|Riff\/Instrumental)/gi;
         const chords =
           /^[A-G][#b]?(m|maj|dim|aug|sus)?\d?(\/[A-G][#b]?)?(\s+[A-G][#b]?(m|maj|dim|aug|sus)?\d?(\/[A-G][#b]?)?)*$/;
+        const addCheck = /add\d/g;
+        const numTimes = /x\d/g;
+        const minMaj = /mmaj/g;
+        const pipeOr = /\|/g;
+        const xOrDash = /(-)?x(-)?/g;
+        const noChord = /N.C./g;
         var indexCount = 4;
         const requests = [
           {
@@ -191,11 +196,35 @@ const scraperObject = {
           },
         ];
 
+        function checkRegex(str) {
+          let checkedStr = [];
+          let regexes = [
+            titles,
+            chords,
+            addCheck,
+            numTimes,
+            minMaj,
+            pipeOr,
+            xOrDash,
+            noChord,
+          ];
+          regexes.forEach((reg) => {
+            reg.test(str) ? checkedStr.push(true) : checkedStr.push(false);
+          });
+          return checkedStr.every((v) => v === false);
+        }
+
         first.split(/\n/).forEach((line, index) => {
-          const isTitle = titles.test(line);
-          const isChord = chords.test(line.trim());
+          const isTitles = titles.test(line)
+          const isChords = chords.test(line.trim())
+          const isAddCheck = addCheck.test(line)
+          const isNumTimes = numTimes.test(line)
+          const isMinMaj = minMaj.test(line)
+          const isPipeOr = pipeOr.test(line)
+          const isxOrDash = xOrDash.test(line)
+          const isNoChord = noChord.test(line)
           if (Number(index) <= Number(indexToSplit)) {
-            if (!isTitle && !isChord && !line.includes("|") && !line.includes("x-") && !line.includes("-x") && !line.includes("N.C.")) {
+            if (!isTitles && !isChords && !isAddCheck && !isNumTimes && !isMinMaj && !isPipeOr && !isxOrDash && !isNoChord) {
               requests.push({
                 insertText: {
                   text: line,
@@ -257,16 +286,16 @@ const scraperObject = {
           },
         });
 
-		let unboldRequests = [];
-		async function unboldLyrics(id) {
-			console.log(JSON.stringify(unboldRequests))
-			await docs.documents.batchUpdate({
-				documentId: id,
-				requestBody: {
-				  requests: unboldRequests,
-				},
-			  });
-		}
+        let unboldRequests = [];
+        async function unboldLyrics(id) {
+          console.log(JSON.stringify(unboldRequests));
+          await docs.documents.batchUpdate({
+            documentId: id,
+            requestBody: {
+              requests: unboldRequests,
+            },
+          });
+        }
 
         async function getNewSong(id) {
           await docs.documents
@@ -287,31 +316,31 @@ const scraperObject = {
                 response.data.body.content[2].table.tableRows[0].tableCells[1].content.forEach(
                   (line) => {
                     console.log(line.paragraph.elements[0].textRun.content);
-                    const isTitle = titles.test(line.paragraph.elements[0].textRun.content);
-                    const isChord = chords.test(line.paragraph.elements[0].textRun.content.trim());
-					if (!isTitle && !isChord && !line.paragraph.elements[0].textRun.content.includes("|") && !line.paragraph.elements[0].textRun.content.includes("-x") && !line.paragraph.elements[0].textRun.content.includes("x-") && !line.paragraph.elements[0].textRun.content.includes("N.C.")) {
-						unboldRequests.push({
-						  updateTextStyle: {
-							range: {
-							  startIndex: line.paragraph.elements[0].startIndex,
-							  endIndex: line.paragraph.elements[0].endIndex,
-							},
-							textStyle: {
-							  bold: false,
-							},
-							fields: "bold",
-						  },
-						});
-					  } 
+                    let lineCheck = checkRegex(line.paragraph.elements[0].textRun.content);
+                    if (lineCheck === true) {
+                      unboldRequests.push({
+                        updateTextStyle: {
+                          range: {
+                            startIndex: line.paragraph.elements[0].startIndex,
+                            endIndex: line.paragraph.elements[0].endIndex,
+                          },
+                          textStyle: {
+                            bold: false,
+                          },
+                          fields: "bold",
+                        },
+                      });
+                    }
                   }
-                )
+                );
               },
               (err) => {
                 console.error("Execute error", err);
               }
-            ).finally(() => {
-				unboldLyrics(id)
-			});
+            )
+            .finally(() => {
+              unboldLyrics(id);
+            });
         }
 
         console.log(JSON.stringify(requests));
