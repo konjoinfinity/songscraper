@@ -14,34 +14,6 @@ const SCOPES = [
   "https://www.googleapis.com/auth/drive.file",
 ];
 
-const rejectUrls = [
-  "/*.adnxs.com",
-  "/*.adform.net",
-  "/*.casalemedia.com",
-  "/*.pubmatic.com",
-  "/*.yahoo.com",
-  "/*.doubleclick.net",
-  "/*.googlesyndication.com",
-  "/*.clean.gg",
-  "/*.privacymanager.io",
-  "/*.flashtalking.com",
-  "/*.1rx.io",
-  "/*.33across.com",
-  "/*.amazon-adsystem.com",
-  "/*.primis.tech",
-  "/*.rubiconproject.com",
-  "/*.sharethrough.com",
-  "/*.amazon.dev",
-  "/*.media.net",
-  "/*.adsrvr.org",
-  "/*.behave.com",
-  "/*.criteo.com",
-  "/*.moatads.com",
-  "/*.criteo.com",
-  "/*.sharethru.com"
-]
-
-const blockList = [];
 const TOKEN_PATH = path.join(process.cwd(), "token.json");
 const CREDENTIALS_PATH = path.join(process.cwd(), "creds.json");
 
