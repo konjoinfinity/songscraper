@@ -18,15 +18,13 @@ const TOKEN_PATH = path.join(process.cwd(), "token.json");
 const CREDENTIALS_PATH = path.join(process.cwd(), "creds.json");
 
 const scraperObject = {
-  url: "https://tabs.ultimate-guitar.com/tab/tenacious-d/tribute-chords-430451",
+  url: "https://tabs.ultimate-guitar.com/tab/paramore/misery-business-chords-531366",
   async scraper(browser) {
     let page = await browser.newPage();
     await page.setViewport({ width: 1350, height: 850 }); 
     console.log(`Navigating to ${this.url}...`);
-    await page.goto(this.url)
+    await page.goto(this.url, { waitUntil: 'domcontentloaded' })
     await page.waitForSelector(".P8ReX");
-    await page.evaluate(() => window.stop());
-
     let first;
     let second;
     let third;
@@ -344,6 +342,9 @@ const scraperObject = {
       }
       authorize().then(listFiles).catch(console.error);
     }, 100);
+    setTimeout(async() => {
+      await browser.close();
+    }, 5000);
   },
 };
 
