@@ -18,7 +18,7 @@ const TOKEN_PATH = path.join(process.cwd(), "token.json");
 const CREDENTIALS_PATH = path.join(process.cwd(), "creds.json");
 
 const scraperObject = {
-  url: "https://tabs.ultimate-guitar.com/tab/johnny-cash/hurt-chords-89849",
+  url: "https://tabs.ultimate-guitar.com/tab/metallica/enter-sandman-chords-98219",
   async scraper(browser) {
     let page = await browser.newPage();
     console.log(`Navigating to ${this.url}...`);
@@ -95,7 +95,9 @@ const scraperObject = {
         "Interlude 2",
         "Riff/Instrumental",
         "Coda",
-        "Capo"
+        "Capo",
+        "Instrumental Fill",
+        "Solo Сhords"
       ];
 
       sectionTitles.forEach((title) => {
