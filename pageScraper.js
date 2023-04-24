@@ -18,7 +18,7 @@ const TOKEN_PATH = path.join(process.cwd(), "token.json");
 const CREDENTIALS_PATH = path.join(process.cwd(), "creds.json");
 
 const scraperObject = {
-  url: "https://tabs.ultimate-guitar.com/tab/paramore/misery-business-chords-531366",
+  url: "https://tabs.ultimate-guitar.com/tab/james-taylor/youve-got-a-friend-chords-56577",
   async scraper(browser) {
     let page = await browser.newPage();
     await page.setViewport({ width: 1350, height: 850 });
