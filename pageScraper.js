@@ -21,9 +21,9 @@ const scraperObject = {
   url: "https://tabs.ultimate-guitar.com/tab/paramore/misery-business-chords-531366",
   async scraper(browser) {
     let page = await browser.newPage();
-    await page.setViewport({ width: 1350, height: 850 }); 
+    await page.setViewport({ width: 1350, height: 850 });
     console.log(`Navigating to ${this.url}...`);
-    await page.goto(this.url, { waitUntil: 'domcontentloaded' })
+    await page.goto(this.url, { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".P8ReX");
     let first;
     let second;
@@ -97,7 +97,7 @@ const scraperObject = {
         "Coda",
         "Capo",
         "Instrumental Fill",
-        "Solo Chords"
+        "Solo Chords",
       ];
 
       sectionTitles.forEach((title) => {
@@ -179,7 +179,7 @@ const scraperObject = {
         const titles =
           /(Chorus|Verse|Verse 1|Verse 2|Intro|Pre-chorus|Interlude|Bridge|Intro Tab|Instrumental|Outro|Solo|Post-Chorus|Bridge 1|Bridge 2|Chorus 1|Chorus 2|Verse 3|Verse 4|Verse 5|Outro Solo|Harmonies|Coda|Pre-Chorus|Chorus 3|Chorus 4|Refrain|Bridge 3|Transition|Interlude Solo|Verse 6|Verse 7|Pre-Chorus A|Pre-Chorus B|Pre-Verse|Link|Solo Part 1|Solo Part 2|Fill|Intro 1|Intro 2|Riff|Interlude 1|Interlude 2|Chorus\/Outro|Riff\/Instrumental|Capo|Instrumental Fill|Solo Chords)/gi;
         const chords =
-          /^[A-G][#b]?(m|maj|dim|aug|sus)?\d?(\/[A-G][#b]?)?(\s+[A-G][#b]?(m|maj|dim|aug|sus)?\d?(\/[A-G][#b]?)?)*$/;
+          /^[A-G][#b]?\d?(m|maj|dim|aug|sus|add|mmaj)?\d?(\/[A-G][#b]?\d?)?(\s+[A-G][#b]?\d?(m|maj|dim|aug|sus|add|mmaj)?\d?(\/[A-G][#b]?)?)*$/;
         const numTimes = /x\d/g;
         var indexCount = 4;
         const requests = [
@@ -195,11 +195,19 @@ const scraperObject = {
         ];
 
         first.split(/\n/).forEach((line, index) => {
-          let isTitles = titles.test(line)
-          let isChords = chords.test(line.trim())
-          let isNumTimes = numTimes.test(line)
+          let isTitles = titles.test(line);
+          let isChords = chords.test(line.trim());
+          let isNumTimes = numTimes.test(line);
           if (Number(index) <= Number(indexToSplit)) {
-            if (!isTitles && !isChords && !isNumTimes && !line.includes("add") && !line.includes("|") && !line.includes("x-") && !line.includes("-x") && !line.includes("N.C.") && !line.includes("mmaj")) {
+            if (
+              !isTitles &&
+              !isChords &&
+              !isNumTimes &&
+              !line.includes("|") &&
+              !line.includes("x-") &&
+              !line.includes("-x") &&
+              !line.includes("N.C.")
+            ) {
               requests.push({
                 insertText: {
                   text: line,
@@ -291,10 +299,32 @@ const scraperObject = {
                 response.data.body.content[2].table.tableRows[0].tableCells[1].content.forEach(
                   (line) => {
                     console.log(line.paragraph.elements[0].textRun.content);
-                    let isTitles = titles.test(line.paragraph.elements[0].textRun.content)
-                    let isChords = chords.test(line.paragraph.elements[0].textRun.content.trim())
-                    let isNumTimes = numTimes.test(line.paragraph.elements[0].textRun.content)
-                    if (!isTitles && !isChords && !isNumTimes && !line.paragraph.elements[0].textRun.content.includes("add") && !line.paragraph.elements[0].textRun.content.includes("|") && !line.paragraph.elements[0].textRun.content.includes("x-") && !line.paragraph.elements[0].textRun.content.includes("-x") && !line.paragraph.elements[0].textRun.content.includes("N.C.") && !line.paragraph.elements[0].textRun.content.includes("mmaj")) {
+                    let isTitles = titles.test(
+                      line.paragraph.elements[0].textRun.content
+                    );
+                    let isChords = chords.test(
+                      line.paragraph.elements[0].textRun.content.trim()
+                    );
+                    let isNumTimes = numTimes.test(
+                      line.paragraph.elements[0].textRun.content
+                    );
+                    if (
+                      !isTitles &&
+                      !isChords &&
+                      !isNumTimes &&
+                      !line.paragraph.elements[0].textRun.content.includes(
+                        "|"
+                      ) &&
+                      !line.paragraph.elements[0].textRun.content.includes(
+                        "x-"
+                      ) &&
+                      !line.paragraph.elements[0].textRun.content.includes(
+                        "-x"
+                      ) &&
+                      !line.paragraph.elements[0].textRun.content.includes(
+                        "N.C."
+                      ) 
+                    ) {
                       unboldRequests.push({
                         updateTextStyle: {
                           range: {
@@ -342,7 +372,7 @@ const scraperObject = {
       }
       authorize().then(listFiles).catch(console.error);
     }, 100);
-    setTimeout(async() => {
+    setTimeout(async () => {
       await browser.close();
     }, 5000);
   },
