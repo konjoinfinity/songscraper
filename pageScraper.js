@@ -36,7 +36,9 @@ const rejectUrls = [
   "/*.adsrvr.org",
   "/*.behave.com",
   "/*.criteo.com",
-  "/*.moatads.com"
+  "/*.moatads.com",
+  "/*.criteo.com",
+  "/*.sharethru.com"
 ]
 
 const blockList = [];
@@ -44,20 +46,14 @@ const TOKEN_PATH = path.join(process.cwd(), "token.json");
 const CREDENTIALS_PATH = path.join(process.cwd(), "creds.json");
 
 const scraperObject = {
-  url: "https://tabs.ultimate-guitar.com/tab/bruno-mars/marry-you-chords-1009718",
+  url: "https://tabs.ultimate-guitar.com/tab/tenacious-d/tribute-chords-430451",
   async scraper(browser) {
     let page = await browser.newPage();
-    await page.setRequestInterception(true);
-    page.on("request", (request) => {
-      if (rejectUrls.find((pattern) => request.url().match(pattern))) {
-        blockList.push(request.url());
-        request.abort();
-      } else request.continue();
-    });
     await page.setViewport({ width: 1350, height: 850 }); 
     console.log(`Navigating to ${this.url}...`);
-    await page.goto(this.url, {timeout: 0});
+    await page.goto(this.url)
     await page.waitForSelector(".P8ReX");
+    await page.evaluate(() => window.stop());
 
     let first;
     let second;

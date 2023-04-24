@@ -17,7 +17,7 @@
     "cheerio": "^1.0.0-rc.12",
     "googleapis": "^105.0.0",
     "node-fetch": "^3.2.6",
-    "puppeteer": "^19.7.1",
+    "puppeteer": "^19.11.0",
     "request": "^2.88.2",
     "request-promise": "^4.2.6"
   }
