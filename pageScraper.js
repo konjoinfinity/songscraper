@@ -97,7 +97,7 @@ const scraperObject = {
         "Coda",
         "Capo",
         "Instrumental Fill",
-        "Solo Сhords"
+        "Solo Chords"
       ];
 
       sectionTitles.forEach((title) => {
