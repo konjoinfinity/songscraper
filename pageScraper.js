@@ -18,7 +18,7 @@ const TOKEN_PATH = path.join(process.cwd(), "token.json");
 const CREDENTIALS_PATH = path.join(process.cwd(), "creds.json");
 
 const scraperObject = {
-  url: "https://tabs.ultimate-guitar.com/tab/led-zeppelin/stairway-to-heaven-chords-91487",
+  url: "https://tabs.ultimate-guitar.com/tab/jeff-buckley/hallelujah-chords-198052",
   async scraper(browser) {
     let page = await browser.newPage();
     console.log(`Navigating to ${this.url}...`);
@@ -177,12 +177,7 @@ const scraperObject = {
           /(Chorus|Verse|Verse 1|Verse 2|Intro|Pre-chorus|Interlude|Bridge|Intro Tab|Instrumental|Outro|Solo|Post-Chorus|Bridge 1|Bridge 2|Chorus 1|Chorus 2|Verse 3|Verse 4|Verse 5|Outro Solo|Harmonies|Coda|Pre-Chorus|Chorus 3|Chorus 4|Refrain|Bridge 3|Transition|Interlude Solo|Verse 6|Verse 7|Pre-Chorus A|Pre-Chorus B|Pre-Verse|Link|Solo Part 1|Solo Part 2|Fill|Intro 1|Intro 2|Riff|Interlude 1|Interlude 2|Chorus\/Outro|Riff\/Instrumental)/gi;
         const chords =
           /^[A-G][#b]?(m|maj|dim|aug|sus)?\d?(\/[A-G][#b]?)?(\s+[A-G][#b]?(m|maj|dim|aug|sus)?\d?(\/[A-G][#b]?)?)*$/;
-        const addCheck = /add\d/g;
         const numTimes = /x\d/g;
-        const minMaj = /mmaj/g;
-        const pipeOr = /\|/g;
-        const xOrDash = /(-)?x(-)?/g;
-        const noChord = /N.C./g;
         var indexCount = 4;
         const requests = [
           {
@@ -199,14 +194,9 @@ const scraperObject = {
         first.split(/\n/).forEach((line, index) => {
           let isTitles = titles.test(line)
           let isChords = chords.test(line.trim())
-          let isAddCheck = addCheck.test(line)
           let isNumTimes = numTimes.test(line)
-          let isMinMaj = minMaj.test(line)
-          let isPipeOr = pipeOr.test(line)
-          let isxOrDash = xOrDash.test(line)
-          let isNoChord = noChord.test(line)
           if (Number(index) <= Number(indexToSplit)) {
-            if (!isTitles && !isChords && !isAddCheck && !isNumTimes && !isPipeOr && !isxOrDash && !isNoChord && !isMinMaj) {
+            if (!isTitles && !isChords && !isNumTimes && !line.includes("add") && !line.includes("|") && !line.includes("x-") && !line.includes("-x") && !line.includes("N.C.") && !line.includes("mmaj")) {
               requests.push({
                 insertText: {
                   text: line,
@@ -298,15 +288,10 @@ const scraperObject = {
                 response.data.body.content[2].table.tableRows[0].tableCells[1].content.forEach(
                   (line) => {
                     console.log(line.paragraph.elements[0].textRun.content);
-                    let isTitles1 = titles.test(line.paragraph.elements[0].textRun.content)
-                    let isChords1 = chords.test(line.paragraph.elements[0].textRun.content.trim())
-                    let isAddCheck1 = addCheck.test(line.paragraph.elements[0].textRun.content)
-                    let isNumTimes1 = numTimes.test(line.paragraph.elements[0].textRun.content)
-                    let isMinMaj1 = minMaj.test(line.paragraph.elements[0].textRun.content)
-                    let isPipeOr1 = pipeOr.test(line.paragraph.elements[0].textRun.content)
-                    let isxOrDash1 = xOrDash.test(line.paragraph.elements[0].textRun.content)
-                    let isNoChord1 = noChord.test(line.paragraph.elements[0].textRun.content)
-                    if (!isTitles1 && !isChords1 && !isAddCheck1 && !isNumTimes1 && !isMinMaj1 && !isPipeOr1 && !isxOrDash1 && !isNoChord1) {
+                    let isTitles = titles.test(line.paragraph.elements[0].textRun.content)
+                    let isChords = chords.test(line.paragraph.elements[0].textRun.content.trim())
+                    let isNumTimes = numTimes.test(line.paragraph.elements[0].textRun.content)
+                    if (!isTitles && !isChords && !isNumTimes && !line.paragraph.elements[0].textRun.content.includes("add") && !line.paragraph.elements[0].textRun.content.includes("|") && !line.paragraph.elements[0].textRun.content.includes("x-") && !line.paragraph.elements[0].textRun.content.includes("-x") && !line.paragraph.elements[0].textRun.content.includes("N.C.") && !line.paragraph.elements[0].textRun.content.includes("mmaj")) {
                       unboldRequests.push({
                         updateTextStyle: {
                           range: {
