@@ -99,7 +99,8 @@ const scraperObject = {
         "Instrumental Fill",
         "Solo Chords",
         "Riff 1",
-        "Riff 2"
+        "Riff 2",
+        "Riff 1 cont."
       ];
 
       sectionTitles.forEach((title) => {
