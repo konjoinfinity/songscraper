@@ -108,7 +108,6 @@ const scraperObject = {
       });
 
       let chartArr = first.split(/\r\n|\r|\n/);
-      let newStart;
       let newFirstIndex;
 
       for (var i = 0; i < 25; i++) {
