@@ -108,7 +108,6 @@ const scraperObject = {
       });
 
       let chartArr = first.split(/\r\n|\r|\n/);
-      // Add newStart logic here
       let newStart;
       let newFirstIndex;
 
@@ -122,8 +121,6 @@ const scraperObject = {
           console.log("remove line");
         }
       }
-      console.log(newStart);
-      // end
 
       let newArr = chartArr.slice(0, 52);
       for (var i = 49; i > 34; i--) {
