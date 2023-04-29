@@ -18,7 +18,7 @@ const TOKEN_PATH = path.join(process.cwd(), "token.json");
 const CREDENTIALS_PATH = path.join(process.cwd(), "creds.json");
 
 const scraperObject = {
-  url: "https://tabs.ultimate-guitar.com/tab/jet/are-you-gonna-be-my-girl-chords-1058317",
+  url: "https://tabs.ultimate-guitar.com/tab/jimmy-eat-world/the-middle-chords-872107",
   async scraper(browser) {
     let page = await browser.newPage();
     await page.setViewport({ width: 1350, height: 850 });
@@ -100,7 +100,7 @@ const scraperObject = {
         "Solo Chords",
         "Riff 1",
         "Riff 2",
-        "Riff 1 cont."
+        "Riff 1 cont.",
       ];
 
       sectionTitles.forEach((title) => {
@@ -108,8 +108,24 @@ const scraperObject = {
       });
 
       let chartArr = first.split(/\r\n|\r|\n/);
-      let newArr = chartArr.slice(0, 52);
+      // Add newStart logic here
+      let newStart;
+      let newFirstIndex;
 
+      for (var i = 0; i < 25; i++) {
+        let found = sectionTitles.some((v) => chartArr[i].trim() == v);
+        console.log(found);
+        if (found === true) {
+          newFirstIndex = i
+          break;
+        } else {
+          console.log("remove line");
+        }
+      }
+      console.log(newStart);
+      // end
+
+      let newArr = chartArr.slice(0, 52);
       for (var i = 49; i > 34; i--) {
         if (newArr[i] === " ") {
           indexToSplit = i;
@@ -184,7 +200,7 @@ const scraperObject = {
         const chords =
           /^[A-G][#b]?\d?(m|maj|dim|aug|sus|add|mmaj)?\d?\d?(\/[A-G][#b]?\d?)?(-)?(-)?(-)?(\s+[A-G][#b]?\d?(m|maj|dim|aug|sus|add|mmaj)?\d?\d?(\/[A-G][#b]?)?)*$/;
         const numTimes = /x\d/g;
-        const dubDash = /[--][--]?/g
+        const dubDash = /[--][--]?/g;
         var indexCount = 4;
         const requests = [
           {
@@ -198,7 +214,9 @@ const scraperObject = {
           },
         ];
 
-        first.split(/\n/).forEach((line, index) => {
+        let newFirst = first.split(/\n/)
+        newFirst = newFirst.splice(newFirstIndex)
+        newFirst.forEach((line, index) => {
           let isTitles = titles.test(line);
           let isChords = chords.test(line.trim());
           let isNumTimes = numTimes.test(line);
@@ -333,7 +351,7 @@ const scraperObject = {
                       ) &&
                       !line.paragraph.elements[0].textRun.content.includes(
                         "N.C."
-                      ) 
+                      )
                     ) {
                       unboldRequests.push({
                         updateTextStyle: {
