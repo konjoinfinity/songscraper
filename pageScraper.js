@@ -38,7 +38,7 @@ const scraperObject = {
     // click -1 
 		// await page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(1)")
     // to select capo from page
-    // no logic to check 'no capo'
+    // no logic to check 'no capo' - check if first character is n or number
     // let capo = await page.$$eval("table > tr:nth-child(4) > td > span", options =>{
 		//	return options.map(option => option.textContent);
 		// });
