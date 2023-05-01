@@ -1,14 +1,25 @@
-# Song Scraper
+# Song Scraper 🎶🎵🎸🎹📄
 
 ## An ultimate-guitar chord chart scraper that creates a new google doc and applies formatting.
 
 ## Features
 
-- Accepts an ultimate-guitar url, scrapes the song data, creates a new google document from a template with the song name, and inserts the formatted text into the sont template.
+- [x] Accepts an ultimate-guitar url, scrapes the song data, creates a new google docs document from a template with the song name, and inserts the formatted text into the song template.
+- [x] Removes '[ ]' brackets from section titles.
+- [x] Recognizes various musical chords and associated notation.
+- [x] Filters and updates formatting (bold/unbold) for section titles, chords, lyrics, and more.
+- [x] Automatically renames the document as: 'song name - artist'.
+- [x] Automatically opens and closes the browser.
+- [x] Works with a variety of song formats from Ultimate Guitar, removes comments, splits the text to fit into two columns.
 
 ## Room for Improvement
 
-- Adding the ability to choose the song key/capo
+- [ ] Adding the ability to choose the song key/capo.
+- [ ] Proxy for puppeteer, to appear from a different IP address each scrape.
+- [ ] Adding human like actions like clicking, moving the mouse randomly, selecting, etc. to appear as a normal user.
+- [ ] Logic to recognize repeating chord patterns within sections, delete duplicates and move chord progression next to the section title.
+- [ ] Automatically export to PDF and download after doc creation and formatting completes.
+- [ ] Deploy to a live url, not necessary but might be useful in the future.
 
 ## Tech/frameworks used
 
@@ -23,14 +34,17 @@
  - request
  - request-promise
 
-#### Motivation
+## Motivation
 
-Built to automate a manual process. I copy chord charts from ultimate-guitar and manually format documents, this program automates that process.
+Built to automate a manual process. I copy chord charts from ultimate-guitar and manually format song chart documents, this program automates that process.
 
 ## Screnshots
 
-<img width="760" alt="Screen Shot 2023-03-17 at 5 03 58 PM" src="https://user-images.githubusercontent.com/46323883/226048135-f836a180-9aa4-4f76-a694-286b8db6030c.png">
-<img width="1263" alt="Screen Shot 2023-03-17 at 5 02 52 PM" src="https://user-images.githubusercontent.com/46323883/226048176-f52dcad5-3325-4383-947c-63f348b06da3.png">
+![je](https://user-images.githubusercontent.com/46323883/235279813-59508b30-e894-4488-b88e-c9ed06468d63.png)
+
+![Middle](https://user-images.githubusercontent.com/46323883/235279818-5345229f-90d0-4423-b4e1-f601b8081260.png)
+
+![ssje](https://user-images.githubusercontent.com/46323883/235279875-9a96ad1f-c4a7-4e3e-8eb7-eaf6f65d85dc.png)
 
 ## License
 
