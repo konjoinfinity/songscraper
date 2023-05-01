@@ -24,6 +24,7 @@ const scraperObject = {
     await page.setViewport({ width: 1350, height: 850 });
     console.log(`Navigating to ${this.url}...`);
     await page.goto(this.url, { waitUntil: "domcontentloaded" })
+    // then function that fires after the doc is loaded, then clicks the capo button n times
     .then(() => {
       page.waitForSelector('section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)');
       let capo = 4
