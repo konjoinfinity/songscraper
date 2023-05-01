@@ -34,9 +34,14 @@ const scraperObject = {
       }
       console.log(capo)
     });
-    //click -1 
+    // click -1 
 		// await page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(1)")
-
+    // to select capo from page
+    // no logic to check 'no capo'
+    // let capo = await page.$$eval("table > tr:nth-child(4) > td > span", options =>{
+		//	return options.map(option => option.textContent);
+		// });
+    // capo = Number(capo.join('').charAt(0))
     await page.waitForSelector(".P8ReX");
     let first;
     let second;
