@@ -18,12 +18,25 @@ const TOKEN_PATH = path.join(process.cwd(), "token.json");
 const CREDENTIALS_PATH = path.join(process.cwd(), "creds.json");
 
 const scraperObject = {
-  url: "https://tabs.ultimate-guitar.com/tab/jimmy-eat-world/the-middle-chords-872107",
+  url: "https://tabs.ultimate-guitar.com/tab/green-day/basket-case-chords-955966",
   async scraper(browser) {
     let page = await browser.newPage();
     await page.setViewport({ width: 1350, height: 850 });
     console.log(`Navigating to ${this.url}...`);
-    await page.goto(this.url, { waitUntil: "domcontentloaded" });
+    await page.goto(this.url, { waitUntil: "domcontentloaded" })
+    .then(() => {
+      page.waitForSelector('section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)');
+      let capo = 4
+      console.log(capo)
+      for(var i=0;i<capo;i++){
+        // click +1
+        page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)")
+      }
+      console.log(capo)
+    });
+    //click -1 
+		// await page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(1)")
+
     await page.waitForSelector(".P8ReX");
     let first;
     let second;
