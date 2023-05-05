@@ -15,6 +15,7 @@
 ## Room for Improvement
 
 - [ ] Adding the ability to choose the song key/capo.
+- [ ] Adding another browser tab/window the newly created document after completion.
 - [ ] Proxy for puppeteer, to appear from a different IP address each scrape.
 - [ ] Adding human like actions like clicking, moving the mouse randomly, selecting, etc. to appear as a normal user.
 - [ ] Logic to recognize repeating chord patterns within sections, delete duplicates and move chord progression next to the section title.
