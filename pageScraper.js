@@ -18,24 +18,24 @@ const TOKEN_PATH = path.join(process.cwd(), "token.json");
 const CREDENTIALS_PATH = path.join(process.cwd(), "creds.json");
 
 const scraperObject = {
-  url: "https://tabs.ultimate-guitar.com/tab/green-day/basket-case-chords-955966",
+  // url: "https://tabs.ultimate-guitar.com/tab/green-day/basket-case-chords-955966",
   async scraper(browser, ugUrl) {
     ugUrl && console.log(ugUrl)
     let page = await browser.newPage();
     await page.setViewport({ width: 1350, height: 850 });
     ugUrl && console.log(`Navigating to ${this.ugUrl}...`);
-    ugUrl && await page.goto(this.url, { waitUntil: "domcontentloaded" })
+    ugUrl && await page.goto(ugUrl, { waitUntil: "domcontentloaded" })
     // then function that fires after the doc is loaded, then clicks the capo button n times
-    .then(() => {
-      page.waitForSelector('section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)');
-      let capo = 4
-      console.log(capo)
-      for(var i=0;i<capo;i++){
-        // click +1
-        page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)")
-      }
-      console.log(capo)
-    });
+    // .then(() => {
+    //   page.waitForSelector('section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)');
+    //   let capo = 4
+    //   console.log(capo)
+    //   for(var i=0;i<capo;i++){
+    //     // click +1
+    //     page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)")
+    //   }
+    //   console.log(capo)
+    // });
     // click -1 
 		// await page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(1)")
     // to select capo from page
