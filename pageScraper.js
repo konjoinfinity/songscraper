@@ -28,16 +28,17 @@ const scraperObject = {
     // then function that fires after the doc is loaded, then clicks the capo button n times
     .then(() => {
       page.waitForSelector('section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)');
-      let capo = 3
+      let capo = 1
       console.log(capo)
       for(var i=0;i<capo;i++){
         // click +1
-        page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)")
+        // page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)")
+         // click -1 
+		page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(1)")
       }
       console.log(capo)
     });
-    // click -1 
-		// await page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(1)")
+   
     // to select capo from page
     // no logic to check 'no capo' - check if first character is n or number
     // let capo = await page.$$eval("table > tr:nth-child(4) > td > span", options =>{
@@ -121,6 +122,9 @@ const scraperObject = {
         "Riff 1",
         "Riff 2",
         "Riff 1 cont.",
+        "Break 1",
+        "Break 2",
+        "Break"
       ];
 
       sectionTitles.forEach((title) => {
@@ -244,8 +248,8 @@ const scraperObject = {
               !isNumTimes &&
               !isDubDash &&
               !line.includes("|") &&
-              !line.includes("x-") &&
-              !line.includes("-x") &&
+              // !line.includes("x-") &&
+              // !line.includes("-x") &&
               !line.includes("N.C.")
             ) {
               requests.push({
@@ -359,12 +363,12 @@ const scraperObject = {
                       !line.paragraph.elements[0].textRun.content.includes(
                         "|"
                       ) &&
-                      !line.paragraph.elements[0].textRun.content.includes(
-                        "x-"
-                      ) &&
-                      !line.paragraph.elements[0].textRun.content.includes(
-                        "-x"
-                      ) &&
+                      // !line.paragraph.elements[0].textRun.content.includes(
+                      //   "x-"
+                      // ) &&
+                      // !line.paragraph.elements[0].textRun.content.includes(
+                      //   "-x"
+                      // ) &&
                       !line.paragraph.elements[0].textRun.content.includes(
                         "N.C."
                       )
