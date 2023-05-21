@@ -28,13 +28,13 @@ const scraperObject = {
     // then function that fires after the doc is loaded, then clicks the capo button n times
     .then(() => {
       page.waitForSelector('section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)');
-      let capo = 1
+      let capo = 2
       console.log(capo)
       for(var i=0;i<capo;i++){
         // click +1
-        // page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)")
+        page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)")
          // click -1 
-		page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(1)")
+		// page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(1)")
       }
       console.log(capo)
     });
@@ -217,8 +217,7 @@ const scraperObject = {
         const docs = google.docs({ version: "v1", auth: authClient });
         const titles =
           /(Chorus|Verse|Verse 1|Verse 2|Intro|Pre-chorus|Interlude|Bridge|Intro Tab|Instrumental|Outro|Solo|Post-Chorus|Bridge 1|Bridge 2|Chorus 1|Chorus 2|Verse 3|Verse 4|Verse 5|Outro Solo|Harmonies|Coda|Pre-Chorus|Chorus 3|Chorus 4|Refrain|Bridge 3|Transition|Interlude Solo|Verse 6|Verse 7|Pre-Chorus A|Pre-Chorus B|Pre-Verse|Link|Solo Part 1|Solo Part 2|Fill|Intro 1|Intro 2|Riff|Riff 1|Riff 2|Interlude 1|Interlude 2|Chorus\/Outro|Riff\/Instrumental|Capo|Instrumental Fill|Solo Chords)/gi;
-        const chords =
-          /^[A-G][#b]?\d?(m|maj|dim|aug|sus|add|mmaj)?\d?\d?(\/[A-G][#b]?\d?)?(-)?(-)?(-)?(\s+[A-G][#b]?\d?(m|maj|dim|aug|sus|add|mmaj)?\d?\d?(\/[A-G][#b]?)?)*$/;
+          const chords = /^[A-G][#b]?(m|maj|dim|aug|sus|add|mmaj)?\d?(\/[A-G][#b]?)?\*?\*?\*?(\s+[A-G][#b]?(m|maj|dim|aug|sus|add|mmaj)?\d?(\/[A-G][#b]?)?\*?\*?\*?)*$/;
         const numTimes = /x\d/g;
         const dubDash = /[--][--]?/g;
         var indexCount = 4;
