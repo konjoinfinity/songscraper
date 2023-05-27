@@ -20,30 +20,32 @@ const CREDENTIALS_PATH = path.join(process.cwd(), "creds.json");
 const scraperObject = {
   // url: "https://tabs.ultimate-guitar.com/tab/green-day/basket-case-chords-955966",
   async scraper(browser, ugUrl) {
-    ugUrl && console.log(ugUrl)
+    ugUrl && console.log(ugUrl);
     let page = await browser.newPage();
     await page.setViewport({ width: 1350, height: 850 });
     ugUrl && console.log(`Navigating to ${this.ugUrl}...`);
-    ugUrl && await page.goto(ugUrl, { waitUntil: "domcontentloaded" })
-    // then function that fires after the doc is loaded, then clicks the capo button n times
-    .then(() => {
-      // page.waitForSelector('section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)');
-      let capo = 2
-      console.log(capo)
-    //   for(var i=0;i<capo;i++){
-    //     // click +1
-    //     page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)")
-    //      // click -1 
-		// // page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(1)")
-    //   }
-    //   console.log(capo)
-    });
-   
+    ugUrl &&
+      (await page
+        .goto(ugUrl, { waitUntil: "domcontentloaded" })
+        // then function that fires after the doc is loaded, then clicks the capo button n times
+        .then(() => {
+          // page.waitForSelector('section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)');
+          let capo = 2;
+          console.log(capo);
+          //   for(var i=0;i<capo;i++){
+          //     // click +1
+          //     page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)")
+          //      // click -1
+          // // page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(1)")
+          //   }
+          //   console.log(capo)
+        }));
+
     // to select capo from page
     // no logic to check 'no capo' - check if first character is n or number
     // let capo = await page.$$eval("table > tr:nth-child(4) > td > span", options =>{
-		// 	return options.map(option => option.textContent);
-		// });
+    // 	return options.map(option => option.textContent);
+    // });
     // capo = Number(capo.join('').charAt(0))
     await page.waitForSelector(".P8ReX");
     let first;
@@ -68,6 +70,8 @@ const scraperObject = {
       third = third.replace("Edit", "");
       newTitle = second + " - " + third;
       first = first.join("");
+
+      // Loose change, bank notes, weary-eyed, dry throat
 
       let sectionTitles = [
         "Chorus",
@@ -124,7 +128,7 @@ const scraperObject = {
         "Riff 1 cont.",
         "Break 1",
         "Break 2",
-        "Break"
+        "Break",
       ];
 
       sectionTitles.forEach((title) => {
@@ -138,7 +142,7 @@ const scraperObject = {
         let found = sectionTitles.some((v) => chartArr[i].trim() == v);
         console.log(found);
         if (found === true) {
-          newFirstIndex = i
+          newFirstIndex = i;
           break;
         } else {
           console.log("remove line");
@@ -217,8 +221,9 @@ const scraperObject = {
         const docs = google.docs({ version: "v1", auth: authClient });
         const titles =
           /(Chorus|Verse|Verse 1|Verse 2|Intro|Pre-chorus|Interlude|Bridge|Intro Tab|Instrumental|Outro|Solo|Post-Chorus|Bridge 1|Bridge 2|Chorus 1|Chorus 2|Verse 3|Verse 4|Verse 5|Outro Solo|Harmonies|Coda|Pre-Chorus|Chorus 3|Chorus 4|Refrain|Bridge 3|Transition|Interlude Solo|Verse 6|Verse 7|Pre-Chorus A|Pre-Chorus B|Pre-Verse|Link|Solo Part 1|Solo Part 2|Fill|Intro 1|Intro 2|Riff|Riff 1|Riff 2|Interlude 1|Interlude 2|Chorus\/Outro|Riff\/Instrumental|Capo|Instrumental Fill|Solo Chords|Riff 1|Riff 2|Riff 1 cont.|Break 1|Break 2|Break)/gi;
-          const chords = /[A-G][#b]?\d?(m|maj|dim|aug|sus|add|mmaj)?\d?(\/[A-G][#b]?\d?)?\*?\*?\*?(\s+[A-G][#b]?\d?(m|maj|dim|aug|sus|add|mmaj)?\d?(\/[A-G][#b]?\d?)?\*?\*?\*?)*(?:\s+slide)?(?:\s+N.C.)?(?:\s+x\d\d?)?(?:|)/g;
-          // const chords = /^[A-G][#b]?\d?(m|maj|dim|aug|sus|add|mmaj)?\d?(\/[A-G][#b]?\d?)?\*?\*?\*?(\s+[A-G][#b]?\d?(m|maj|dim|aug|sus|add|mmaj)?\d?(\/[A-G][#b]?\d?)?\*?\*?\*?)*(?:\s+slide)?/gm;
+        const chords =
+          /[A-G][#b]?\d?(m|maj|dim|aug|sus|add|mmaj)?\d?(\/[A-G][#b]?\d?)?\*?\*?\*?(\s+[A-G][#b]?\d?(m|maj|dim|aug|sus|add|mmaj)?\d?(\/[A-G][#b]?\d?)?\*?\*?\*?)*(?:\s+slide)?(?:\s+N.C.)?(?:\s+x\d\d?)?(?:|)/g;
+        // const chords = /^[A-G][#b]?\d?(m|maj|dim|aug|sus|add|mmaj)?\d?(\/[A-G][#b]?\d?)?\*?\*?\*?(\s+[A-G][#b]?\d?(m|maj|dim|aug|sus|add|mmaj)?\d?(\/[A-G][#b]?\d?)?\*?\*?\*?)*(?:\s+slide)?/gm;
         const numTimes = /x\d/g;
         const dubDash = /[--][--]?/g;
         var indexCount = 4;
@@ -234,24 +239,13 @@ const scraperObject = {
           },
         ];
 
-        let newFirst = first.split(/\n/)
-        newFirst = newFirst.splice(newFirstIndex)
+        let newFirst = first.split(/\n/);
+        newFirst = newFirst.splice(newFirstIndex);
         newFirst.forEach((line, index) => {
           let isTitles = titles.test(line);
           let isChords = chords.test(line.trim());
-          let isNumTimes = numTimes.test(line);
-          let isDubDash = dubDash.test(line);
           if (Number(index) <= Number(indexToSplit)) {
-            if (
-              !isTitles &&
-              !isChords &&
-              !isNumTimes &&
-              !isDubDash &&
-              !line.includes("|") &&
-              // !line.includes("x-") &&
-              // !line.includes("-x") &&
-              !line.includes("N.C.")
-            ) {
+            if (!isTitles && !isChords) {
               requests.push({
                 insertText: {
                   text: line,
@@ -349,30 +343,7 @@ const scraperObject = {
                     let isChords = chords.test(
                       line.paragraph.elements[0].textRun.content.trim()
                     );
-                    let isNumTimes = numTimes.test(
-                      line.paragraph.elements[0].textRun.content
-                    );
-                    let isDubDash = dubDash.test(
-                      line.paragraph.elements[0].textRun.content
-                    );
-                    if (
-                      !isTitles &&
-                      !isChords &&
-                      !isNumTimes &&
-                      !isDubDash &&
-                      !line.paragraph.elements[0].textRun.content.includes(
-                        "|"
-                      ) &&
-                      // !line.paragraph.elements[0].textRun.content.includes(
-                      //   "x-"
-                      // ) &&
-                      // !line.paragraph.elements[0].textRun.content.includes(
-                      //   "-x"
-                      // ) &&
-                      !line.paragraph.elements[0].textRun.content.includes(
-                        "N.C."
-                      )
-                    ) {
+                    if (!isTitles && !isChords) {
                       unboldRequests.push({
                         updateTextStyle: {
                           range: {
@@ -405,7 +376,9 @@ const scraperObject = {
             resource: { name: newTitle },
           },
           async (err, driveResponse) => {
-            if(err){console.log(err)}
+            if (err) {
+              console.log(err);
+            }
             documentCopyId = driveResponse?.data.id;
             console.log(driveResponse?.data.id);
             const updateResponse = await docs.documents.batchUpdate({
