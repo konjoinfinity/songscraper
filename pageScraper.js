@@ -129,6 +129,7 @@ const scraperObject = {
         "Break 1",
         "Break 2",
         "Break",
+        "Chords"
       ];
 
       sectionTitles.forEach((title) => {
