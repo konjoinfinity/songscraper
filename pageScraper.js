@@ -18,7 +18,6 @@ const TOKEN_PATH = path.join(process.cwd(), "token.json");
 const CREDENTIALS_PATH = path.join(process.cwd(), "creds.json");
 
 const scraperObject = {
-  // url: "https://tabs.ultimate-guitar.com/tab/green-day/basket-case-chords-955966",
   async scraper(browser, ugUrl) {
     ugUrl && console.log(ugUrl);
     let page = await browser.newPage();
@@ -70,8 +69,6 @@ const scraperObject = {
       third = third.replace("Edit", "");
       newTitle = second + " - " + third;
       first = first.join("");
-
-      // Loose change, bank notes, weary-eyed, dry throat
 
       let sectionTitles = [
         "Chorus",
