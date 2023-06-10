@@ -22,7 +22,7 @@ const scraperObject = {
     ugUrl && console.log(ugUrl);
     let page = await browser.newPage();
     await page.setViewport({ width: 1350, height: 850 });
-    ugUrl && console.log(`Navigating to ${this.ugUrl}...`);
+    ugUrl && console.log(`Navigating to ${ugUrl}...`);
     ugUrl &&
       (await page
         .goto(ugUrl, { waitUntil: "domcontentloaded" })
