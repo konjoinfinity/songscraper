@@ -130,7 +130,12 @@ const scraperObject = {
         "Chorus 5",
         "Chorus 6",
         "Chorus 7",
-        "Chorus 8"
+        "Chorus 8",
+        "Pre Chorus",
+        "Verse I",
+        "Verse II",
+        "Verse III",
+        "Verse IV"
       ];
 
       sectionTitles.forEach((title) => {
@@ -222,7 +227,7 @@ const scraperObject = {
         const drive = google.drive({ version: "v3", auth: authClient });
         const docs = google.docs({ version: "v1", auth: authClient });
         const titles =
-          /(Chorus|Verse|Verse 1|Verse 2|Intro|Pre-chorus|Interlude|Bridge|Intro Tab|Instrumental|Outro|Solo|Post-Chorus|Bridge 1|Bridge 2|Chorus 1|Chorus 2|Verse 3|Verse 4|Verse 5|Outro Solo|Harmonies|Coda|Pre-Chorus|Chorus 3|Chorus 4|Refrain|Bridge 3|Transition|Interlude Solo|Verse 6|Verse 7|Pre-Chorus A|Pre-Chorus B|Pre-Verse|Link|Solo Part 1|Solo Part 2|Fill|Intro 1|Intro 2|Riff|Riff 1|Riff 2|Interlude 1|Interlude 2|Chorus\/Outro|Riff\/Instrumental|Capo|Instrumental Fill|Solo Chords|Riff 1|Riff 2|Riff 1 cont.|Break 1|Break 2|Break|Chorus 5|Chorus 6|Chorus 7|Chorus 8)/gi;
+          /(Chorus|Verse|Verse 1|Verse 2|Intro|Pre-chorus|Interlude|Bridge|Intro Tab|Instrumental|Outro|Solo|Post-Chorus|Bridge 1|Bridge 2|Chorus 1|Chorus 2|Verse 3|Verse 4|Verse 5|Outro Solo|Harmonies|Coda|Pre-Chorus|Chorus 3|Chorus 4|Refrain|Bridge 3|Transition|Interlude Solo|Verse 6|Verse 7|Pre-Chorus A|Pre-Chorus B|Pre-Verse|Link|Solo Part 1|Solo Part 2|Fill|Intro 1|Intro 2|Riff|Riff 1|Riff 2|Interlude 1|Interlude 2|Chorus\/Outro|Riff\/Instrumental|Capo|Instrumental Fill|Solo Chords|Riff 1|Riff 2|Riff 1 cont.|Break 1|Break 2|Break|Chorus 5|Chorus 6|Chorus 7|Chorus 8|Pre Chorus|Verse I|Verse II|Verse III|Verse IV)/gi;
         const chords =
           /[A-G][#b]?\d?(m|maj|dim|aug|sus|add|mmaj)?\d?(\/[A-G][#b]?\d?)?\*?\*?\*?(\s+[A-G][#b]?\d?(m|maj|dim|aug|sus|add|mmaj)?\d?(\/[A-G][#b]?\d?)?\*?\*?\*?)*(?:\s+slide)?(?:\s+N.C.)?(?:\s+x\d\d?\d?\d?\d?\d?)?(?:|)?(?:\:)?/g;
        
