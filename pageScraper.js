@@ -151,8 +151,6 @@ const scraperObject = {
         if (found === true) {
           newFirstIndex = i;
           break;
-        } else {
-          console.log("remove line");
         }
       }
 
@@ -161,8 +159,6 @@ const scraperObject = {
         if (newArr[i] === " ") {
           indexToSplit = i;
           break;
-        } else {
-          console.log("this is a line: " + i);
         }
       }
 
