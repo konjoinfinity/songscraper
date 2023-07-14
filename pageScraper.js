@@ -27,18 +27,19 @@ const scraperObject = {
       (await page
         .goto(ugUrl, { waitUntil: "domcontentloaded" })
         // then function that fires after the doc is loaded, then clicks the capo button n times
-        .then(() => {
-          // page.waitForSelector('section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)');
+        .then(async() => {
+          await page.waitForSelector('section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)');
           let capo = 2;
           console.log(capo);
-          //   for(var i=0;i<capo;i++){
+            for(var i=0;i<capo;i++){
           //     // click +1
-          //     page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)")
+              page.click('section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)')
           //      // click -1
           // // page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(1)")
-          //   }
+            }
           //   console.log(capo)
         }));
+
 
     // to select capo from page
     // no logic to check 'no capo' - check if first character is n or number
