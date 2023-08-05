@@ -1,37 +1,7 @@
 {
-	"folders": [
-		{
-			"path": "../hashlips_art_engine"
-		},
-		{
-			"path": "../../generative-nft"
-		},
-		{
-			"path": "../../nft"
-		},
-		{
-			"path": "../../lazymint"
-		},
-		{
-			"path": "../../rarerari"
-		},
-		{
-			"path": "../../sdk/packages/example"
-		},
-		{
-			"path": "../../Downloads/CoApp"
-		},
-		{
-			"path": "../../rntesting"
-		},
-		{
-			"path": "../test-react"
-		},
-		{
-			"path": "."
-		},
-		{
-			"path": "../js-calculator"
-		}
-	]
+    "folders": [
+        {
+            "path": "."
+        }
+    ]
 }

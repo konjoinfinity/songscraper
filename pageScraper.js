@@ -28,15 +28,15 @@ const scraperObject = {
         .goto(ugUrl, { waitUntil: "domcontentloaded" })
         // then function that fires after the doc is loaded, then clicks the capo button n times
         .then(async() => {
-          await page.waitForSelector('section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)');
+          // await page.waitForSelector('section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)');
           let capo = 2;
           console.log(capo);
-            for(var i=0;i<capo;i++){
-          //     // click +1
-              page.click('section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)')
+          //   for(var i=0;i<capo;i++){
+          // //     // click +1
+          //     page.click('section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)')
           //      // click -1
           // // page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(1)")
-            }
+            // }
           //   console.log(capo)
         }));
 
