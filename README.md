@@ -45,7 +45,7 @@
 
 ## Motivation
 
-Built to automate a manual process. I copy chord charts from ultimate-guitar and manually format song chart documents, this program automates that process.
+Built to automate a manual process: Copying pasting chord charts from ultimate-guitar and manually formatting google docs song charts.
 
 ## Screnshots
 
