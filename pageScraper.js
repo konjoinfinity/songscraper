@@ -57,7 +57,7 @@ const scraperObject = {
       first = await page.$$eval("pre > span", (options) => {
         return options.map((option) => option.textContent);
       });
-      second = await page.$$eval("header > h1", (options) => {
+      second = await page.$$eval("header > div > h1", (options) => {
         return options.map((option) => option.textContent);
       });
       third = await page.$$eval("header > span > a", (options) => {
