@@ -60,7 +60,7 @@ const scraperObject = {
       second = await page.$$eval("header > div > h1", (options) => {
         return options.map((option) => option.textContent);
       });
-      third = await page.$$eval("header > span > a", (options) => {
+      third = await page.$$eval("header > div > span > a", (options) => {
         return options.map((option) => option.textContent);
       });
 
