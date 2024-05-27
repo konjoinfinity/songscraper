@@ -29,14 +29,14 @@ const scraperObject = {
         // then function that fires after the doc is loaded, then clicks the capo button n times
         .then(async() => {
           // await page.waitForSelector('section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)');
-          let capo = 2;
-          console.log(capo);
+          // let capo = 5;
+          // console.log(capo);
           //   for(var i=0;i<capo;i++){
-          // //     // click +1
-          //     page.click('section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)')
+          //      // click +1
+          //     //page.click('section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(3)')
           //      // click -1
-          // // page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(1)")
-            // }
+          // page.click("section > div:nth-child(7) > div > span.NWgb3 > button:nth-child(1)")
+          //   }
           //   console.log(capo)
         }));
 
@@ -159,6 +159,7 @@ const scraperObject = {
       for (var i = 49; i > 34; i--) {
         if (newArr[i] === " ") {
           indexToSplit = i;
+          console.log(indexToSplit);
           break;
         }
       }

@@ -4,7 +4,7 @@ var readlineSync = require('readline-sync');
 async function scrapeAll(browserInstance){
 	let browser;
 	try{
-		var ugUrl = readlineSync.question('Specify the Ultimate Guitar chord chart url: ');
+		var ugUrl = readlineSync.question('Specify the Ultimate Guitar Chord Chart Url: ');
 		console.log('url = ' + ugUrl);
 		console.log("Opening the browser......");
 		browser = await browserInstance;
