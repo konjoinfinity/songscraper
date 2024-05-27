@@ -54,7 +54,7 @@ const scraperObject = {
     let newTitle;
 
     setTimeout(async () => {
-      first = await page.$$eval("pre > span", (options) => {
+      first = await page.$$eval("pre", (options) => {
         return options.map((option) => option.textContent);
       });
       second = await page.$$eval("header > div > h1", (options) => {
@@ -68,8 +68,12 @@ const scraperObject = {
       third = third.join("");
       second = second.replace(" Chords", "");
       third = third.replace("Edit", "");
-      newTitle = second + " - " + third;
+      newTitle = second + "- " + third;
       first = first.join("");
+      console.log(first)
+      console.log(second)
+      console.log(third)
+      console.log(newTitle)
 
       let sectionTitles = [
         "Chorus",
@@ -147,7 +151,10 @@ const scraperObject = {
       let newFirstIndex;
 
       for (var i = 0; i < 25; i++) {
-        let found = sectionTitles.some((v) => chartArr[i].trim() == v);
+        let found = false;
+  if (sectionTitles && sectionTitles.length > 0) {
+    found = sectionTitles.some((v) => chartArr[i] && chartArr[i].trim() == v);
+  }
         console.log(found);
         if (found === true) {
           newFirstIndex = i;
@@ -310,6 +317,14 @@ const scraperObject = {
           },
         });
 
+        const filteredRequests = requests.filter(req => {
+          if (req.updateTextStyle && req.updateTextStyle.range.startIndex === req.updateTextStyle.range.endIndex) {
+            // Exclude updateTextStyle requests with empty ranges
+            return false;
+          }
+          return true;
+        });
+
         let unboldRequests = [];
         async function unboldLyrics(id) {
           console.log(JSON.stringify(unboldRequests));
@@ -372,7 +387,7 @@ const scraperObject = {
             });
         }
 
-        console.log(JSON.stringify(requests));
+        console.log(JSON.stringify(filteredRequests));
         await drive.files.copy(
           {
             fileId: "1xM26IwbTj7L9VNXwDLyXV4ZWSdLUvRybDclq_u46My4",
@@ -387,7 +402,7 @@ const scraperObject = {
             const updateResponse = await docs.documents.batchUpdate({
               documentId: documentCopyId,
               requestBody: {
-                requests: requests,
+                requests: filteredRequests,
               },
             });
             console.log(updateResponse.data);
