@@ -40,12 +40,7 @@ export const config = {
   puppeteer: {
     headless: true,
     // Container-safe flags. --no-sandbox is required to run Chromium as root in a container.
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-    ],
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
     executablePath: PUPPETEER_EXECUTABLE_PATH || undefined,
   },
 
