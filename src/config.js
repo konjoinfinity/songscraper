@@ -11,6 +11,8 @@ const {
   TEMPLATE_DOC_ID,
   DRIVE_FOLDER_ID,
   PUPPETEER_EXECUTABLE_PATH,
+  SCRAPE_STRATEGY,
+  DETECT_MIN_SCORE,
 } = process.env;
 
 export const config = {
@@ -46,6 +48,12 @@ export const config = {
 
   // How long to wait for navigation/selectors before giving up (ms).
   scrapeTimeoutMs: 45_000,
+
+  // Extraction strategy: 'heuristic' (default, content-based, resilient to DOM
+  // changes), 'auto' (selector first, heuristic fallback), or 'selector' (legacy).
+  scrapeStrategy: SCRAPE_STRATEGY || 'heuristic',
+  // Minimum chord-chart score the heuristic must clear to be trusted.
+  detectMinScore: Number(DETECT_MIN_SCORE) || 5,
 };
 
 // Ultimate Guitar DOM selectors. These rot whenever UG ships a markup change.
