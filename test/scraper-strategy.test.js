@@ -26,8 +26,8 @@ const SELECTOR_TEXT = 'SELECTOR-SOURCED CHART TEXT';
 //  - $$eval(sel, fn): returns an array of strings (readJoined joins them).
 function makePage({ candidates = [], selectorParts = [SELECTOR_TEXT] }) {
   return {
-    evaluate: async () => candidates,
-    $$eval: async () => selectorParts,
+    evaluate: () => Promise.resolve(candidates),
+    $$eval: () => Promise.resolve(selectorParts),
   };
 }
 

@@ -29,7 +29,9 @@ export async function extractChordText(
   strategy = config.scrapeStrategy,
   minScore = config.detectMinScore
 ) {
+  /** @returns {Promise<string>} the selector-sourced chord text, trimmed */
   const viaSelector = async () => (await readJoined(page, selectors.chordBlock)).trim();
+  /** @returns {Promise<string>} the heuristic-detected chord text, trimmed ('' if none) */
   const viaHeuristic = async () => ((await detectChordBlock(page, minScore)) ?? '').trim();
 
   if (strategy === 'selector') return viaSelector();
@@ -59,7 +61,7 @@ export async function scrapeSong(url) {
 
     await page.goto(url, { waitUntil: 'networkidle2' });
     // Best-effort: wait on the known render signal, but don't fail if it has rotted.
-    await page.waitForSelector(selectors.ready).catch(() => {});
+    await page.waitForSelector(selectors.ready).catch(() => null);
 
     const rawText = await extractChordText(page);
     const rawTitle = await readJoined(page, selectors.title);

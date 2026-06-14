@@ -112,11 +112,15 @@ export function pickBestCandidate(candidates) {
  * self-contained — it is serialized into the page by page.evaluate().
  * @returns {Array<{ tag: string, text: string }>}
  */
-/* global document -- collectCandidatesInPage executes in the browser via page.evaluate */
-/* istanbul ignore next — runs in the browser, covered by live integration */
+/* istanbul ignore next — runs in the browser (via page.evaluate), covered by live integration */
 function collectCandidatesInPage() {
   const out = [];
   const seen = new Set();
+  /**
+   * Record an element's text as a candidate if it is multi-line and not huge.
+   * @param {Element} el
+   * @returns {void}
+   */
   const consider = (el) => {
     const text = el.innerText || el.textContent || '';
     if (!text) return;
@@ -169,7 +173,7 @@ export async function detectChordBlock(page, minScore = 0) {
  */
 export function parseTitleFromDocTitle(docTitle) {
   if (!docTitle) return null;
-  const m = docTitle.match(/^(.*?)\s+Chords?\s+by\s+(.*?)(?:\s*[@|].*)?$/i);
-  if (!m) return null;
-  return { title: m[1].trim(), artist: m[2].trim() };
+  const match = docTitle.match(/^(.*?)\s+Chords?\s+by\s+(.*?)(?:\s*[@|].*)?$/i);
+  if (!match) return null;
+  return { title: match[1].trim(), artist: match[2].trim() };
 }

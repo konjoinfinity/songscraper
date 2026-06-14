@@ -14,6 +14,9 @@ export default [
         Buffer: 'readonly',
         setTimeout: 'readonly',
         fetch: 'readonly',
+        // Browser global — used inside collectCandidatesInPage, which is serialized
+        // into the page by page.evaluate() and executes in the browser context.
+        document: 'readonly',
       },
     },
     rules: {
