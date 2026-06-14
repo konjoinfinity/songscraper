@@ -31,8 +31,8 @@ function computeSplitIndices(first) {
   for (let i = 0; i < 25; i++) {
     let found = false;
     if (SECTION_TITLES.length > 0) {
-      // eslint-disable-next-line eqeqeq -- preserve the legacy loose comparison verbatim (operands are strings, so behavior is identical)
-      found = SECTION_TITLES.some((v) => chartArr[i] && chartArr[i].trim() == v);
+      // Operands are strings, so the legacy loose comparison is equivalent to strict.
+      found = SECTION_TITLES.some((v) => chartArr[i] && chartArr[i].trim() === v);
     }
     if (found === true) {
       newFirstIndex = i;
