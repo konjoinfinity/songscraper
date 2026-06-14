@@ -1,4 +1,14 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
 /creds.json
 /credentials.json
-node_modules
 /token.json
+
+# Dependencies & build output
+node_modules
+coverage
+
+# OS / editor
+.DS_Store
