@@ -32,18 +32,29 @@ bash .konjo/scripts/install-hooks.sh   # install Wall 1 pre-commit hook
 - **`/scrape` is never open.** It requires the `x-api-key` shared-secret header and a validated
   `ultimate-guitar.com` URL.
 - **ESM + async/await throughout.** No callback-style Google API calls; await every promise.
-- **Selectors are config.** UG selectors live in `src/config.js` so they can be re-pinned when UG
-  changes its markup.
+- **Selectors are config, not the primary strategy.** Extraction is **heuristic-first**
+  (`src/detect.js` scores candidate text blocks by chord-content fingerprint), with the CSS selector
+  in `src/config.js` as a fallback. Strategy is env-switchable via `SCRAPE_STRATEGY`. Selectors are
+  still worth re-pinning when convenient, but a markup change no longer breaks the scrape.
+
+## How extraction works
+`src/scraper.js` resolves the chart via `extractChordText(page)` under `SCRAPE_STRATEGY`:
+- `heuristic` (default): content-based detector first; fall back to the selector if nothing clears
+  `DETECT_MIN_SCORE` (resilient to UG DOM/class-name churn).
+- `auto`: CSS selector first (fast, unambiguous when it works); fall back to the heuristic.
+- `selector`: selector only (exact legacy behavior — the escape hatch).
+Title/artist also fall back to parsing `document.title` when their selectors fail.
 
 ## Module Map
 | Module | Role |
 |--------|------|
 | `src/server.js` | Express app, routes, API-key guard, input validation |
-| `src/scraper.js` | `scrapeSong(url) -> { title, artist, rawText }` (Puppeteer, headless) |
+| `src/scraper.js` | `scrapeSong(url) -> { title, artist, rawText }` + `extractChordText` (strategy) |
+| `src/detect.js` | heuristic chord-block detection: pure scoring + Puppeteer glue (primary strategy) |
 | `src/formatter.js` | **Crown Jewels**: builds `batchUpdate` requests + second unbold pass (behavior-preserved) |
 | `src/google/auth.js` | OAuth2 client, `/auth` + `/oauth2callback`, refresh-token load |
 | `src/google/docs.js` | copy template, run `batchUpdate`, re-read doc for unbold pass |
-| `src/config.js` | env-driven config: templateId, folderId, scopes, selectors, port |
+| `src/config.js` | env-driven config: templateId, folderId, scopes, selectors, strategy, port |
 | `src/constants.js` | `sectionTitles[]`, `titles` regex source, `chords` regex source |
 
 ## Quality Framework
