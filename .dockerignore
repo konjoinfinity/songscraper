@@ -1,0 +1,13 @@
+node_modules
+.env
+.env.*
+creds.json
+credentials.json
+token.json
+.git
+.github
+coverage
+.claude
+.konjo
+*.md
+!README.md
