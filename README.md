@@ -1,60 +1,94 @@
 # Song Scraper 🎶🎵🎸🎹📄
 
-## An ultimate-guitar chord chart scraper that creates a new google doc and applies formatting.
+## A headless service that turns an Ultimate Guitar chord chart into a formatted Google Doc.
 
 ![NodeJS](https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white)
-![Pupeteer](https://img.shields.io/badge/Puppeteer-40B5A4?style=for-the-badge&logo=Puppeteer&logoColor=white)
+![Puppeteer](https://img.shields.io/badge/Puppeteer-40B5A4?style=for-the-badge&logo=Puppeteer&logoColor=white)
 ![Google Drive](https://img.shields.io/badge/Google%20Drive-4285F4?style=for-the-badge&logo=googledrive&logoColor=white)
 ![Google Cloud](https://img.shields.io/badge/GoogleCloud-%234285F4.svg?style=for-the-badge&logo=google-cloud&logoColor=white)
--
-[![GitHub license](https://badgen.net/github/license/Naereen/Strapdown.js)](https://github.com/Naereen/StrapDown.js/blob/master/LICENSE)
-[![made-with-javascript](https://img.shields.io/badge/Made%20with-JavaScript-1f425f.svg)](https://www.javascript.com)
 
-## Features
+`POST /scrape { url }` → scrapes the chart with headless Chrome → copies a Google Docs template →
+inserts the chart with bold section-titles/chords and unbold lyrics → returns `{ docUrl, title, artist }`.
 
-- [x] Accepts an ultimate-guitar url, scrapes the song data, creates a new google docs document from a template with the song name, and inserts the formatted text into the song template.
-- [x] Removes '[ ]' brackets from section titles.
-- [x] Recognizes various musical chords and associated notation.
-- [x] Filters and updates formatting (bold/unbold) for section titles, chords, lyrics, and more.
-- [x] Automatically renames the document as: 'song name - artist'.
-- [x] Automatically opens and closes the browser.
-- [x] Works with a variety of song formats from Ultimate Guitar, removes comments, splits the text to fit into two columns.
-- [x] Adding the ability to choose the song key/capo. ***This works but you have to know how many steps up or down ahead of time***
+Designed to run **unattended on Cloud Run**: headless, stateless, scales to zero, and authenticates to
+Google with a stored OAuth refresh token (zero human interaction per run). Triggerable from a phone.
 
-## Room for Improvement
+> This is the v2 service rewrite of the original local, GUI-only CLI tool (Replit, 2024). The
+> document-formatting logic is preserved exactly — see the regression guard below.
 
-- [ ] Adding another browser tab/window the newly created document after completion.
-- [ ] Proxy for puppeteer, to appear from a different IP address each scrape.
-- [ ] Adding human like actions like clicking, moving the mouse randomly, selecting, etc. to appear as a normal user.
-- [ ] Logic to recognize repeating chord patterns within sections, delete duplicates and move chord progression next to the section title.
-- [ ] Automatically export to PDF and download after doc creation and formatting completes.
-- [ ] Deploy to a live url, not necessary but might be useful in the future.
+## Architecture
 
-## Tech/frameworks used
+```
+src/
+  server.js        Express app + routes + API-key guard + URL validation
+  scraper.js       scrapeSong(url) -> { title, artist, rawText }   (headless Puppeteer)
+  formatter.js     Crown Jewels: builds the batchUpdate requests + unbold second pass
+  google/
+    auth.js        OAuth2 client, /auth + /oauth2callback, refresh-token load
+    docs.js        copy template, batchUpdate, unbold second pass (all awaited)
+  config.js        env-driven: templateId, folderId, scopes, selectors, port
+  constants.js     sectionTitles[], titles regex, chords regex
+test/
+  formatter.test.js        regression: refactored payload === legacy payload
+  formatter.fixture.json   captured legacy batchUpdate payload (golden)
+```
 
- - @google-cloud/local-auth
- - @googleapis/docs
- - @types/node
- - axios
- - cheerio
- - googleapis
- - node-fetch
- - puppeteer
- - request
- - request-promise
+## Endpoints
 
-## Motivation
+| Method | Route | Auth | Purpose |
+|--------|-------|------|---------|
+| `POST` | `/scrape` | `x-api-key` header | scrape a UG URL → create a formatted Google Doc |
+| `GET` | `/healthz` | none | liveness probe |
+| `GET` | `/auth` | none | one-time OAuth consent (bootstrap) |
+| `GET` | `/oauth2callback` | none | capture the refresh token (bootstrap) |
 
-Built to automate a manual process: Copying pasting chord charts from ultimate-guitar and manually formatting google docs song charts.
+`/scrape` accepts only well-formed `ultimate-guitar.com` URLs and requires the `x-api-key` shared
+secret. It is never an open scraping endpoint.
 
-## Screnshots
+## Local development
 
-![je](https://user-images.githubusercontent.com/46323883/235279813-59508b30-e894-4488-b88e-c9ed06468d63.png)
+```bash
+cp .env.example .env     # fill in OAuth client + API_KEY (see DEPLOY.md for the bootstrap)
+npm install
+npm test                 # formatter regression guard
+npm run lint
+node src/server.js       # GET http://localhost:8080/healthz -> {"status":"ok"}
+```
 
-![Middle](https://user-images.githubusercontent.com/46323883/235279818-5345229f-90d0-4423-b4e1-f601b8081260.png)
+## The Crown Jewels (do not change behavior)
 
-![ssje](https://user-images.githubusercontent.com/46323883/235279875-9a96ad1f-c4a7-4e3e-8eb7-eaf6f65d85dc.png)
+The formatting logic in `src/formatter.js` is the fragile heart of the tool. It was **relocated** from
+the legacy `pageScraper.js` with its output preserved exactly:
+- two-pass formatting (insert + bold guesses, then re-read and unbold lyric lines),
+- the template contract (`"Song Title - Artist Name"` and `"col2"` placeholders, 2-column table),
+- the `titles`/`chords` regexes and `sectionTitles` array,
+- the index math that builds the requests.
+
+`npm test` asserts the refactored formatter produces a payload **identical** to the captured legacy
+payload (`test/formatter.fixture.json`, 87 requests for the sample chart). Regenerate the fixture only
+with `npm run fixture` and explicit sign-off.
+
+## Deployment
+
+See **[DEPLOY.md](./DEPLOY.md)** for the full `gcloud run deploy` flow (image build, Secret Manager
+wiring, and the one-time `/auth` bootstrap).
+
+Two **human action items** that cannot be automated:
+1. Set the OAuth consent screen to **Production** (in Testing status, Google expires refresh tokens
+   after 7 days).
+2. Add the deployed `/oauth2callback` URL to the OAuth client's Authorized redirect URIs.
+3. (Maintenance) Re-pin the UG selectors in `src/config.js` if a scrape returns empty fields.
+
+## Out of scope (deferred)
+
+PDF auto-export, repeating-chord-pattern dedup, and the mobile trigger surface (PWA / Telegram bot /
+iOS Shortcut). Clean extension points are left in place.
+
+## Conventions
+
+This repo follows the **Konjo Quality Framework** (`CLAUDE.md`, `KONJO_QUALITY_FRAMEWORK.md`,
+`.claude/`, `.konjo/`). Run `/konjo` to boot a session.
 
 ## License
 
-MIT © [Konjo Tech - Wesley Scholl](2023)
+MIT © [Konjo Tech - Wesley Scholl](https://github.com/konjoinfinity)
