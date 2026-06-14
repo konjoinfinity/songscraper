@@ -1,0 +1,154 @@
+#!/usr/bin/env bash
+# Konjo Quality Framework — Wall 1: Pre-Commit Hook (Node)
+#
+# Detects a Node repo and runs the appropriate gates on staged files.
+# Must complete in < 60 seconds. Zero --no-verify bypasses.
+#
+# Install: bash .konjo/scripts/install-hooks.sh
+# Manual:  ln -sf ../../.konjo/hooks/pre-commit .git/hooks/pre-commit
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+BOLD="$(tput bold 2>/dev/null || echo '')"
+RED="$(tput setaf 1 2>/dev/null || echo '')"
+YEL="$(tput setaf 3 2>/dev/null || echo '')"
+GRN="$(tput setaf 2 2>/dev/null || echo '')"
+RST="$(tput sgr0 2>/dev/null || echo '')"
+
+banner() { echo "${BOLD}[konjo] $1${RST}"; }
+pass()   { echo "${GRN}  ✓ $1${RST}"; }
+warn()   { echo "${YEL}  ⚠ $1${RST}"; }
+fail()   { echo "${RED}  ✗ $1${RST}" >&2; exit 1; }
+
+HAS_NODE=false
+[[ -f "$REPO_ROOT/package.json" ]] && HAS_NODE=true
+
+STAGED="$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null || echo '')"
+if [[ -z "$STAGED" ]]; then
+    echo "[konjo] No staged files — nothing to check."
+    exit 0
+fi
+
+STAGED_JS="$(echo "$STAGED" | grep -E '\.(js|mjs|cjs)$' | grep -E '^(src|test)/' || true)"
+
+banner "Wall 1 pre-commit ($(date +%H:%M:%S))"
+
+# ── 1. NODE GATES ─────────────────────────────────────────────────────────────
+if $HAS_NODE && [[ -n "$STAGED_JS" ]]; then
+    banner "1a. eslint"
+    if [[ -x "$REPO_ROOT/node_modules/.bin/eslint" ]]; then
+        # shellcheck disable=SC2086
+        if ! "$REPO_ROOT/node_modules/.bin/eslint" $STAGED_JS 2>&1; then
+            fail "eslint: violations found. Run 'npm run lint' to see details."
+        fi
+        pass "eslint"
+    else
+        warn "eslint not installed — run 'npm install' (lint gate skipped at pre-commit)"
+    fi
+
+    banner "1b. prettier format check"
+    if [[ -x "$REPO_ROOT/node_modules/.bin/prettier" ]]; then
+        # shellcheck disable=SC2086
+        if ! "$REPO_ROOT/node_modules/.bin/prettier" --check $STAGED_JS 2>&1; then
+            fail "prettier: format violations. Run 'npx prettier --write' to fix."
+        fi
+        pass "prettier"
+    else
+        warn "prettier not installed — format gate skipped at pre-commit"
+    fi
+
+    banner "1c. swallowed-error scan"
+    SWALLOW_HITS=""
+    while IFS= read -r f; do
+        [[ -f "$f" ]] || continue
+        # Empty catch block: catch (e) {}  /  catch {}
+        HITS=$(grep -En 'catch[^{]*\{\s*\}' "$f" || true)
+        if [[ -n "$HITS" ]]; then
+            SWALLOW_HITS+="$f: $HITS"$'\n'
+        fi
+    done <<< "$STAGED_JS"
+    if [[ -n "$SWALLOW_HITS" ]]; then
+        echo "$SWALLOW_HITS"
+        fail "Empty catch block found. Log and rethrow, or handle the error explicitly."
+    fi
+    pass "no swallowed errors"
+fi
+
+# ── 2. SECRET SCAN (all staged files) ─────────────────────────────────────────
+banner "2. secret scan"
+SECRET_HITS=""
+while IFS= read -r f; do
+    [[ -f "$f" ]] || continue
+    case "$f" in
+        *.md|*.example|.gitignore|.dockerignore) continue ;;
+    esac
+    HITS=$(grep -EnI '(-----BEGIN [A-Z ]*PRIVATE KEY-----|"client_secret"\s*:\s*"[^"]+"|refresh_token"\s*:\s*"1//[^"]+|AIza[0-9A-Za-z_-]{20,})' "$f" || true)
+    if [[ -n "$HITS" ]]; then
+        SECRET_HITS+="$f: $HITS"$'\n'
+    fi
+done <<< "$STAGED"
+if [[ -n "$SECRET_HITS" ]]; then
+    echo "$SECRET_HITS"
+    fail "Possible secret in staged content. Move it to env / Secret Manager and remove from the tree."
+fi
+pass "no secrets detected"
+
+# ── 3. UNIVERSAL GATES ────────────────────────────────────────────────────────
+banner "3a. file size check"
+while IFS= read -r f; do
+    [[ -f "$f" ]] || continue
+    case "$f" in
+        *.js|*.mjs|*.cjs|*.ts) ;;
+        *) continue ;;
+    esac
+    LINE_COUNT=$(wc -l < "$f" | tr -d ' ')
+    if [[ "$LINE_COUNT" -gt 500 ]]; then
+        warn "$f: $LINE_COUNT lines (hard limit 500, target 300) — split this module"
+    fi
+done <<< "$STAGED"
+pass "file size check complete"
+
+banner "3b. DRY check (staged files)"
+if [[ -f "$REPO_ROOT/.konjo/scripts/dry_check.py" ]] && command -v python3 &>/dev/null; then
+    if ! python3 "$REPO_ROOT/.konjo/scripts/dry_check.py" --staged-only --min-lines 20 --threshold 0.85 2>&1; then
+        fail "DRY violation: duplicate code blocks found. Abstract into a shared function."
+    fi
+    pass "DRY check"
+else
+    warn "dry_check.py not found — skipping DRY check"
+fi
+
+banner "3c. TODO/FIXME in staged code"
+TODO_HITS=""
+while IFS= read -r f; do
+    [[ -f "$f" ]] || continue
+    [[ "$f" =~ \.konjo/hooks/ ]] && continue
+    [[ "$f" =~ \.claude/ ]] && continue
+    [[ "$f" =~ \.md$ ]] && continue
+    HITS=$(grep -EnI '(TODO|FIXME|HACK|XXX)\b' "$f" || true)
+    if [[ -n "$HITS" ]]; then
+        TODO_HITS+="$f: $HITS"$'\n'
+    fi
+done <<< "$STAGED"
+if [[ -n "$TODO_HITS" ]]; then
+    echo "$TODO_HITS"
+    fail "TODO/FIXME found in staged code. Placeholder markers do not ship. Fix or remove."
+fi
+pass "no TODO/FIXME"
+
+# ── 4. WALL 3 PREVIEW (optional) ──────────────────────────────────────────────
+if [[ "${KONJO_SKIP_REVIEW:-}" != "1" ]] && command -v python3 &>/dev/null && \
+   [[ -n "${ANTHROPIC_API_KEY:-}" ]] && \
+   [[ -f "$REPO_ROOT/.konjo/scripts/konjo_review.py" ]]; then
+    banner "4. adversarial review preview (Wall 3 — set KONJO_SKIP_REVIEW=1 to skip)"
+    DIFF=$(git diff --cached 2>/dev/null)
+    if [[ -n "$DIFF" ]]; then
+        python3 "$REPO_ROOT/.konjo/scripts/konjo_review.py" --diff "$DIFF" --soft-fail 2>&1 \
+            || warn "Review flagged issues — check output above before pushing"
+    fi
+fi
+
+echo ""
+pass "Wall 1 cleared. All pre-commit checks passed."
+echo "${BOLD}Run 'git push' when ready. Wall 2 (CI) and Wall 3 (adversarial review) will gate the PR.${RST}"

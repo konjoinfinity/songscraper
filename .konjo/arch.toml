@@ -1,0 +1,38 @@
+# Konjo Architectural Fitness — songscraper module layer rules
+#
+# Each module belongs to a tier. A lower-tier module must NOT import from a
+# higher-tier module. Violations indicate architectural erosion.
+#
+# Research basis: AI agents generated an 80% architectural violation rate in
+# microservices without enforcement (arXiv 2512.04273).
+#
+# Enforced by: review + dependency inspection (no upward imports).
+# Runs in: Wall 1 pre-commit (advisory) · Wall 2 CI (review)
+
+[[layers]]
+tier = 1
+name = "foundation"
+description = "Zero internal dependencies. Pure data and config: regexes, section titles, env config."
+modules = ["src/constants.js", "src/config.js"]
+
+[[layers]]
+tier = 2
+name = "logic"
+description = "Pure-ish domain logic. Depend on tier 1 only. The Crown Jewels formatter and the scraper."
+modules = ["src/formatter.js", "src/scraper.js"]
+
+[[layers]]
+tier = 3
+name = "adapters"
+description = "External system adapters. Depend on tier 1-2. Google Drive/Docs + OAuth."
+modules = ["src/google/docs.js", "src/google/auth.js"]
+
+[[layers]]
+tier = 4
+name = "interface"
+description = "HTTP surface. May depend on any tier. Express app, routes, guards, validation."
+modules = ["src/server.js"]
+
+[rules]
+no_upward_deps = true   # a module cannot import from a higher-tier module
+no_cycles = true        # no circular dependencies anywhere in the graph
