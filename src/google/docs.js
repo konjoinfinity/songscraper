@@ -7,13 +7,22 @@ import { config } from '../config.js';
 import { createFormatter } from '../formatter.js';
 import { buildDocTitle } from '../scraper.js';
 
-const DOC_URL = (id) => `https://docs.google.com/document/d/${id}/edit`;
+/**
+ * Build the editable Google Docs URL for a document id.
+ * @param {string} id - the document id
+ * @returns {string} the doc URL
+ */
+const docUrl = (id) => `https://docs.google.com/document/d/${id}/edit`;
 
 // Fields for the second pass: just the column-2 table cell paragraph elements.
 const CELL_FIELDS =
   'body(content(table(tableRows(tableCells(content(paragraph(elements(endIndex,startIndex,textRun/content))))))))';
 
-// Pull the column-2 cell content array out of the doc, defensively.
+/**
+ * Pull the column-2 table-cell content array out of a fetched doc, defensively.
+ * @param {object} doc - the documents.get response data
+ * @returns {object[]|null} the cell content array, or null if not found
+ */
 function getColumn2Content(doc) {
   return doc?.body?.content?.[2]?.table?.tableRows?.[0]?.tableCells?.[1]?.content ?? null;
 }
@@ -61,5 +70,5 @@ export async function createSongDoc(authClient, song) {
     );
   }
 
-  return { documentId, docUrl: DOC_URL(documentId), title: song.title, artist: song.artist };
+  return { documentId, docUrl: docUrl(documentId), title: song.title, artist: song.artist };
 }

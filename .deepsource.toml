@@ -1,5 +1,11 @@
 version = 1
 
+# test/ files are tests, not shipped API surface; scripts/ is a one-off dev
+# generator for the regression fixture. Neither counts toward documentation
+# coverage or shipped-code analysis.
+test_patterns = ["test/**"]
+exclude_patterns = ["scripts/**", "node_modules/**", "coverage/**"]
+
 [[analyzers]]
 name = "javascript"
 

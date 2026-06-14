@@ -62,7 +62,12 @@ export const selectors = {
   artist: 'header > div > span > a',
 };
 
-// Fail fast with a clear message when a required value is missing.
+/**
+ * Fail fast with a clear message when a required env value is missing.
+ * @param {string[]} keys - logical config keys to require (e.g. 'apiKey', 'refreshToken')
+ * @throws {Error} if any required value is unset
+ * @returns {void}
+ */
 export function assertConfig(keys) {
   const missing = [];
   for (const key of keys) {

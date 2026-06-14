@@ -5,7 +5,12 @@
 import puppeteer from 'puppeteer';
 import { config, selectors } from './config.js';
 
-// Read every match of `selector` and return the concatenated textContent.
+/**
+ * Read every match of `selector` and return the concatenated textContent.
+ * @param {import('puppeteer').Page} page - the Puppeteer page
+ * @param {string} selector - a CSS selector
+ * @returns {Promise<string>} the joined textContent of all matches
+ */
 async function readJoined(page, selector) {
   const parts = await page.$$eval(selector, (els) => els.map((el) => el.textContent));
   return parts.join('');
@@ -17,7 +22,7 @@ async function readJoined(page, selector) {
  * @returns {Promise<{ title: string, artist: string, rawText: string }>}
  */
 export async function scrapeSong(url) {
-  let browser;
+  let browser = null;
   try {
     browser = await puppeteer.launch({
       headless: config.puppeteer.headless,
@@ -57,8 +62,13 @@ export async function scrapeSong(url) {
   }
 }
 
-// The document title the legacy code produced: `${title}- ${artist}` (note: no
-// space before the dash). Preserved exactly because it feeds the title placeholder.
+/**
+ * The document title the legacy code produced: `${title}- ${artist}` (note: no
+ * space before the dash). Preserved exactly because it feeds the title placeholder.
+ * @param {string} title - the song title
+ * @param {string} artist - the artist name
+ * @returns {string} the composed document title
+ */
 export function buildDocTitle(title, artist) {
   return `${title}- ${artist}`;
 }

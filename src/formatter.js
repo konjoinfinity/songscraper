@@ -13,7 +13,12 @@ import {
   COL2_PLACEHOLDER,
 } from './constants.js';
 
-// Strip the [Section] brackets, leaving the bare section name (legacy order matters).
+/**
+ * Strip the [Section] brackets, leaving the bare section name. The legacy
+ * iteration order matters (e.g. "Chorus" is processed before "Chorus 1").
+ * @param {string} text - the raw chart text
+ * @returns {string} the chart with section brackets removed
+ */
 function stripBrackets(text) {
   let first = text;
   for (const title of SECTION_TITLES) {
@@ -22,46 +27,61 @@ function stripBrackets(text) {
   return first;
 }
 
-// Find the first line that is a section title (the chart's real start), and the
-// row at which column 1 ends / column 2 begins. Mirrors the legacy index math,
-// including the intentionally-loose `==` and the possibility of `undefined`.
-function computeSplitIndices(first) {
-  const chartArr = first.split(/\r\n|\r|\n/);
-  let newFirstIndex;
+/**
+ * Find the first line (within the first 25) that is exactly a section title —
+ * the real start of the chart.
+ * @param {string[]} chartArr - the chart split into lines
+ * @returns {number|undefined} the line index, or undefined if none found
+ */
+function findFirstSectionIndex(chartArr) {
   for (let i = 0; i < 25; i++) {
-    let found = false;
-    if (SECTION_TITLES.length > 0) {
-      // Operands are strings, so the legacy loose comparison is equivalent to strict.
-      found = SECTION_TITLES.some((v) => chartArr[i] && chartArr[i].trim() === v);
-    }
-    if (found === true) {
-      newFirstIndex = i;
-      break;
+    const line = chartArr[i];
+    // Operands are strings, so the legacy loose comparison equals strict.
+    if (line && SECTION_TITLES.some((v) => line.trim() === v)) {
+      return i;
     }
   }
-
-  const newArr = chartArr.slice(0, 52);
-  let indexToSplit;
-  for (let j = 49; j > 34; j--) {
-    if (newArr[j] === ' ') {
-      indexToSplit = j;
-      break;
-    }
-  }
-  return { newFirstIndex, indexToSplit };
+  return undefined;
 }
 
-// A single-use formatter. The `titles`/`chords` regexes are created once and
-// shared between buildBatchRequests (pass 1) and buildUnboldRequests (pass 2),
-// preserving the legacy stateful-`.test()` carryover across both passes.
-// Call buildBatchRequests first, then buildUnboldRequests once.
+/**
+ * Find the row (scanning 49→35) at which column 1 ends and column 2 begins —
+ * the first blank-ish line (a single space) in that window.
+ * @param {string[]} chartArr - the chart split into lines
+ * @returns {number|undefined} the split index, or undefined if none found
+ */
+function findSplitIndex(chartArr) {
+  const newArr = chartArr.slice(0, 52);
+  for (let j = 49; j > 34; j--) {
+    if (newArr[j] === ' ') {
+      return j;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * A single-use formatter. The `titles`/`chords` regexes are created once and
+ * shared between buildBatchRequests (pass 1) and buildUnboldRequests (pass 2),
+ * preserving the legacy stateful-`.test()` carryover across both passes.
+ * Call buildBatchRequests first, then buildUnboldRequests once.
+ * @param {{ rawText: string, title: string }} song - scraped chart + doc title
+ * @returns {{ buildBatchRequests: () => object[], buildUnboldRequests: (cellContent: object[]) => object[] }}
+ */
 export function createFormatter({ rawText, title }) {
   const titles = new RegExp(TITLES_SOURCE, TITLES_FLAGS);
   const chords = new RegExp(CHORDS_SOURCE, CHORDS_FLAGS);
 
+  /**
+   * Pass 1: build the requests that fill column 1 (inserted text at indices with
+   * bold/unbold guesses), replace the column-2 placeholder, and set the title.
+   * @returns {object[]} the filtered batchUpdate requests
+   */
   function buildBatchRequests() {
     const first = stripBrackets(rawText);
-    const { newFirstIndex, indexToSplit } = computeSplitIndices(first);
+    const lines = first.split(/\r\n|\r|\n/);
+    const newFirstIndex = findFirstSectionIndex(lines);
+    const indexToSplit = findSplitIndex(lines);
 
     let indexCount = 4;
     const requests = [
@@ -76,8 +96,8 @@ export function createFormatter({ rawText, title }) {
     let newFirst = first.split(/\n/);
     newFirst = newFirst.splice(newFirstIndex);
     newFirst.forEach((line, index) => {
-      // Both tests run every iteration (even skipped lines) to advance regex state,
-      // exactly as the legacy code did.
+      // Both tests run every iteration (even skipped lines) to advance regex
+      // state, exactly as the legacy code did.
       const isTitles = titles.test(line);
       const isChords = chords.test(line.trim());
       if (Number(index) <= Number(indexToSplit)) {
@@ -105,20 +125,21 @@ export function createFormatter({ rawText, title }) {
     });
 
     // Drop updateTextStyle requests with an empty range (start === end).
-    return requests.filter((req) => {
-      if (
-        req.updateTextStyle &&
-        req.updateTextStyle.range.startIndex === req.updateTextStyle.range.endIndex
-      ) {
-        return false;
-      }
-      return true;
-    });
+    return requests.filter(
+      (req) =>
+        !(
+          req.updateTextStyle &&
+          req.updateTextStyle.range.startIndex === req.updateTextStyle.range.endIndex
+        )
+    );
   }
 
-  // Pass 2: re-read the column-2 table cell content and unbold the lyric lines
-  // (lines that are neither section titles nor chords). `cellContent` is the
-  // array at body.content[2].table.tableRows[0].tableCells[1].content.
+  /**
+   * Pass 2: re-read the column-2 table cell content and unbold the lyric lines
+   * (lines that are neither section titles nor chords).
+   * @param {object[]} cellContent - body.content[2].table.tableRows[0].tableCells[1].content
+   * @returns {object[]} the unbold updateTextStyle requests
+   */
   function buildUnboldRequests(cellContent) {
     const unboldRequests = [];
     cellContent.forEach((line) => {

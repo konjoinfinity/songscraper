@@ -11,7 +11,11 @@
 import { google } from 'googleapis';
 import { config, assertConfig } from '../config.js';
 
-// A bare OAuth2 client (no credentials set). Used for the consent flow.
+/**
+ * Build a bare OAuth2 client (no credentials set). Used for the consent flow.
+ * @returns {import('google-auth-library').OAuth2Client} a configured client
+ * @throws {Error} if the OAuth client env vars are missing
+ */
 function makeOAuthClient() {
   assertConfig(['clientId', 'clientSecret', 'redirectUri']);
   return new google.auth.OAuth2(
