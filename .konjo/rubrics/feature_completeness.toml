@@ -1,0 +1,12 @@
+name = "feature_completeness"
+
+criteria = [
+  "All existing tests still pass",
+  "The stated goal is fully implemented — no partial stubs or unresolved task markers remain",
+  "At least one new test covers the new behaviour",
+  "The new code handles error cases (not just the happy path)",
+  "No new clippy warnings or lint errors",
+  "Public functions and types have doc comments",
+  "No debugging artefacts remain in the diff",
+  "The diff does not accidentally include unrelated changes",
+]

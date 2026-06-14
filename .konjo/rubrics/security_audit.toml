@@ -1,0 +1,12 @@
+name = "security_audit"
+
+criteria = [
+  "No user-controlled input is interpolated into shell commands without sanitisation",
+  "No credentials, API keys, or secrets are written to source files",
+  "External data (webhook payloads, API responses) is validated before use",
+  "SQL queries use parameterised bindings — no string concatenation into queries",
+  "All HTTP endpoints require authentication or are explicitly documented as public",
+  "Error messages do not leak internal paths, stack traces, or secret values",
+  "No new dependencies with known CVEs (cargo audit clean)",
+  "Existing tests still pass",
+]

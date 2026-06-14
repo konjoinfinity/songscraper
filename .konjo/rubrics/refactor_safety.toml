@@ -1,0 +1,12 @@
+name = "refactor_safety"
+
+criteria = [
+  "All existing tests still pass without modification",
+  "No public API surface has been removed or renamed",
+  "No new unwrap() or expect() calls outside test modules",
+  "No new clippy warnings introduced",
+  "Changed code follows the existing patterns in those files (naming, indentation, error handling)",
+  "No logic has been extracted into a new abstraction unless it was already duplicated",
+  "The diff is limited to files directly relevant to the stated refactor goal",
+  "No debugging artefacts (dbg!, println!, task-marker comments) remain in the diff",
+]
