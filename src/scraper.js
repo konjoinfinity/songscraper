@@ -5,6 +5,7 @@
 import puppeteer from 'puppeteer';
 import { config, selectors } from './config.js';
 import { detectChordBlock, parseTitleFromDocTitle } from './detect.js';
+import { loadChartPage, launchArgs, isChallengePage } from './fetcher.js';
 
 /**
  * Read every match of `selector` and return the concatenated textContent.
@@ -64,18 +65,24 @@ export async function scrapeSong(url) {
   try {
     browser = await puppeteer.launch({
       headless: config.puppeteer.headless,
-      args: config.puppeteer.args,
+      args: [...config.puppeteer.args, ...launchArgs()],
       executablePath: config.puppeteer.executablePath,
     });
 
-    const page = await browser.newPage();
-    page.setDefaultNavigationTimeout(config.scrapeTimeoutMs);
-    page.setDefaultTimeout(config.scrapeTimeoutMs);
-    await page.setViewport({ width: 1350, height: 850 });
+    // Acquire the chart page via the configured fetch strategy (direct/proxy/
+    // unlocker). loadChartPage handles navigation, proxy auth, and the ready wait.
+    const page = await loadChartPage(browser, url);
 
-    await page.goto(url, { waitUntil: 'networkidle2' });
-    // Best-effort: wait on the known render signal, but don't fail if it has rotted.
-    await page.waitForSelector(selectors.ready).catch(() => null);
+    // Fail fast with a clear, actionable message if we got an anti-bot wall
+    // instead of the chart (the unlocker path is expected to have solved it).
+    if (config.fetchStrategy !== 'unlocker' && isChallengePage(await page.title())) {
+      throw new Error(
+        'Blocked by anti-bot protection (a Cloudflare-style challenge page was returned ' +
+          `instead of the chart). FETCH_STRATEGY is "${config.fetchStrategy}". UG blocks ` +
+          'headless Chrome from any IP; set FETCH_STRATEGY=unlocker (recommended) or =proxy ' +
+          'with a residential/mobile proxy. See README.md / DEPLOY.md.'
+      );
+    }
 
     const rawText = await extractChordText(page);
     const rawTitle = await readFirst(page, selectors.title);

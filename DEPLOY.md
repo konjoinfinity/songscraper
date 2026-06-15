@@ -100,6 +100,19 @@ Now:
 > (b) run the bootstrap **locally** (see "Local bootstrap" below) and only deploy the resulting token.
 > Either way, `/scrape` stays protected by the API key on top of any IAM.
 
+> **⚠️ Anti-bot — `FETCH_STRATEGY` is required on Cloud Run.** Ultimate Guitar is behind Cloudflare
+> bot protection that blocks headless Chrome from any IP, so the default `FETCH_STRATEGY=direct` will
+> return a "Just a moment…" challenge and the scrape will fail with a clear error. Set a real-user
+> egress on the deployed service (see README → *Fetching past Cloudflare*). Recommended — a web
+> unlocker API:
+> ```bash
+> gcloud run services update songscraper --region="$REGION" \
+>   --update-env-vars="FETCH_STRATEGY=unlocker,UNLOCKER_API_URL=https://api.provider.com/unlock" \
+>   --update-secrets="UNLOCKER_API_KEY=UNLOCKER_API_KEY:latest"
+> ```
+> (Create the `UNLOCKER_API_KEY` secret first, as in step 3. For `FETCH_STRATEGY=proxy` instead, set
+> `PROXY_SERVER` and the `PROXY_USERNAME`/`PROXY_PASSWORD` secret.)
+
 ---
 
 ## 5. One-time OAuth bootstrap (mint the refresh token)
