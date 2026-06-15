@@ -1,0 +1,61 @@
+name: Deploy to Cloud Run
+
+# Auto-deploy on merge to main. Auth is keyless via Workload Identity Federation
+# (no service-account JSON key stored in GitHub). See DEPLOY.md for the one-time
+# WIF + repo-variable setup.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write # required for Workload Identity Federation (OIDC)
+
+jobs:
+  deploy:
+    name: build & deploy
+    runs-on: ubuntu-latest
+    environment: production
+    # Skip (don't fail) until the one-time WIF + repo-variable setup is done — see DEPLOY.md §7.
+    if: ${{ vars.WIF_PROVIDER != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Re-run the test suite before deploying so a broken main never ships.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
+      - run: npm test
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SA }}
+
+      # Builds the Dockerfile via Cloud Build (source deploy) and rolls it out.
+      # --allow-unauthenticated: the x-api-key shared secret is the auth boundary,
+      # so the iOS Shortcut can reach /scrape without a Google identity token.
+      - id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ vars.CLOUD_RUN_SERVICE }}
+          region: ${{ vars.GCP_REGION }}
+          source: .
+          flags: '--allow-unauthenticated'
+          env_vars: |
+            GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }}
+            TEMPLATE_DOC_ID=${{ vars.TEMPLATE_DOC_ID }}
+            OAUTH_REDIRECT_URI=${{ vars.OAUTH_REDIRECT_URI }}
+          secrets: |
+            API_KEY=API_KEY:latest
+            GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest
+            REFRESH_TOKEN=REFRESH_TOKEN:latest
+
+      - name: Smoke-test /healthz
+        run: curl -fsS "${{ steps.deploy.outputs.url }}/healthz"

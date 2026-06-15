@@ -1,0 +1,31 @@
+name: CI
+
+# Konjo Wall 2 — gate every PR (and pushes to main) on lint, formatting, tests
+# (+ coverage ratchet floor), and dependency advisories.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: lint · format · test · audit
+    runs-on: ubuntu-latest
+    env:
+      # Unit tests are browser-free; skip the Chromium download to keep CI fast.
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      # --coverage enforces the ratchet floor in jest.config.js (blocks regressions).
+      - run: npm test -- --coverage
+      - run: npm audit --audit-level=high

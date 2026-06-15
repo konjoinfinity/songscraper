@@ -151,6 +151,60 @@ curl -X POST "$URL/scrape" \
 
 ---
 
+## 7. Continuous deployment (GitHub Actions + Workload Identity Federation)
+
+Steps 2 and 4 are automated by `.github/workflows/deploy.yml`: on every merge to `main` it runs the
+tests, then builds (Cloud Build, from the `Dockerfile`) and deploys to Cloud Run — authenticating
+**keylessly** via Workload Identity Federation (no service-account JSON key stored in GitHub).
+`.github/workflows/ci.yml` gates each PR on lint, formatting, tests (+ coverage ratchet floor), and
+`npm audit`.
+
+> **Auth model for mobile:** the deploy uses `--allow-unauthenticated`. The service is **not** open —
+> `/scrape` is guarded by the `x-api-key` shared secret (constant-time check) plus UG-URL validation.
+> This is what lets the iOS Shortcut (`docs/MOBILE.md`) call it without a Google identity token. If you
+> prefer IAM-private instead, drop the flag and have callers send an identity token (see step 6), but
+> note that complicates the phone trigger.
+
+### One-time setup
+
+1. **Workload Identity Federation** — create a pool + provider bound to this repo:
+   ```bash
+   PROJECT_ID=$(gcloud config get-value project)
+   PROJECT_NUM=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
+
+   gcloud iam workload-identity-pools create github --location=global --display-name="GitHub"
+   gcloud iam workload-identity-pools providers create-oidc github \
+     --location=global --workload-identity-pool=github \
+     --display-name="GitHub OIDC" \
+     --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
+     --attribute-condition="assertion.repository=='konjoinfinity/songscraper'" \
+     --issuer-uri="https://token.actions.githubusercontent.com"
+   ```
+
+2. **Deployer service account** — create it and grant the deploy roles, then let GitHub impersonate it:
+   ```bash
+   gcloud iam service-accounts create songscraper-deployer
+   SA="songscraper-deployer@$PROJECT_ID.iam.gserviceaccount.com"
+   for ROLE in roles/run.admin roles/iam.serviceAccountUser \
+               roles/cloudbuild.builds.editor roles/artifactregistry.writer; do
+     gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:$SA" --role="$ROLE"
+   done
+   gcloud iam service-accounts add-iam-policy-binding "$SA" \
+     --role=roles/iam.workloadIdentityUser \
+     --member="principalSet://iam.googleapis.com/projects/$PROJECT_NUM/locations/global/workloadIdentityPools/github/attribute.repository/konjoinfinity/songscraper"
+   ```
+
+3. **GitHub repo variables** (Settings → Secrets and variables → Actions → *Variables*):
+   `GCP_PROJECT`, `GCP_REGION`, `CLOUD_RUN_SERVICE`, `GOOGLE_CLIENT_ID`, `TEMPLATE_DOC_ID`,
+   `OAUTH_REDIRECT_URI`, plus:
+   - `WIF_PROVIDER` = `projects/<PROJECT_NUM>/locations/global/workloadIdentityPools/github/providers/github`
+   - `DEPLOY_SA` = `songscraper-deployer@<PROJECT_ID>.iam.gserviceaccount.com`
+
+   The runtime secrets (`API_KEY`, `GOOGLE_CLIENT_SECRET`, `REFRESH_TOKEN`) stay in **Secret Manager**
+   (step 3 above) — the workflow references them by name, they are never copied into GitHub.
+
+---
+
 ## Human action items checklist
 - [ ] OAuth consent screen set to **Production** (otherwise refresh tokens expire after 7 days).
 - [ ] Deployed `/oauth2callback` URL added to the OAuth client's Authorized redirect URIs.
