@@ -136,7 +136,10 @@ export async function createBrowserbaseSession() {
 export async function resolveRemoteEndpoint() {
   const { wsEndpoint, browserbase } = config.remote;
   if (wsEndpoint) return wsEndpoint;
-  if (browserbase.apiKey && browserbase.projectId) return createBrowserbaseSession();
+  // `await` here (not a bare return) keeps this function genuinely async — it
+  // resolves a session before returning — so the contract is uniform: every
+  // branch settles a promise (string, resolved session, or rejection).
+  if (browserbase.apiKey && browserbase.projectId) return await createBrowserbaseSession();
   throw new Error(
     'FETCH_STRATEGY=remote but no remote browser is configured. Set ' +
       'REMOTE_BROWSER_WS_ENDPOINT (e.g. a Browserless wss:// URL) or ' +
