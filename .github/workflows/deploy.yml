@@ -16,6 +16,8 @@ jobs:
     name: build & deploy
     runs-on: ubuntu-latest
     environment: production
+    # Skip (don't fail) until the one-time WIF + repo-variable setup is done — see DEPLOY.md §7.
+    if: ${{ vars.WIF_PROVIDER != '' }}
     steps:
       - uses: actions/checkout@v4
 
