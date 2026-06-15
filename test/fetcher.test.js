@@ -3,27 +3,32 @@ import { isChallengePage, launchArgs, fetchViaUnlocker, loadChartPage } from '..
 
 const CHART_HTML = '<html><head><title>Open Shut Them Chords</title></head><body><pre>[Intro]</pre></body></html>';
 
-// A fake Puppeteer page that records calls without a real browser.
+// A fake Puppeteer page that records calls without a real browser. Methods are
+// plain (non-async) — the code under test awaits them, and `await` on a
+// non-promise is a no-op, so this keeps the mock simple and lint-clean.
 function makeFakePage({ title = 'Open Shut Them Chords' } = {}) {
   const calls = { setContent: [], goto: [], authenticate: [], waitForSelector: 0, waitForFunction: 0 };
   return {
     _calls: calls,
-    setDefaultNavigationTimeout: () => {},
-    setDefaultTimeout: () => {},
-    setViewport: async () => {},
-    setContent: async (html, opts) => calls.setContent.push([html, opts]),
-    goto: async (url, opts) => calls.goto.push([url, opts]),
-    authenticate: async (creds) => calls.authenticate.push(creds),
-    waitForSelector: async () => {
+    setDefaultNavigationTimeout: () => undefined,
+    setDefaultTimeout: () => undefined,
+    setViewport: () => undefined,
+    setContent: (html, opts) => calls.setContent.push([html, opts]),
+    goto: (url, opts) => calls.goto.push([url, opts]),
+    authenticate: (creds) => calls.authenticate.push(creds),
+    // These are awaited with a `.catch(...)` in fetcher.js, so return a thenable.
+    waitForSelector: () => {
       calls.waitForSelector += 1;
+      return Promise.resolve();
     },
-    waitForFunction: async () => {
+    waitForFunction: () => {
       calls.waitForFunction += 1;
+      return Promise.resolve();
     },
-    title: async () => title,
+    title: () => title,
   };
 }
-const makeFakeBrowser = (page) => ({ newPage: async () => page });
+const makeFakeBrowser = (page) => ({ newPage: () => page });
 
 // A minimal fetch Response stand-in.
 const fakeResponse = ({ ok = true, status = 200, statusText = 'OK', contentType = 'application/json', body } = {}) => ({
@@ -31,8 +36,8 @@ const fakeResponse = ({ ok = true, status = 200, statusText = 'OK', contentType 
   status,
   statusText,
   headers: { get: (k) => (k.toLowerCase() === 'content-type' ? contentType : null) },
-  json: async () => body,
-  text: async () => body,
+  json: () => body,
+  text: () => body,
 });
 
 describe('isChallengePage', () => {
@@ -83,7 +88,7 @@ describe('fetchViaUnlocker', () => {
 
 describe('unlocker path (env-configured)', () => {
   const OLD_ENV = process.env;
-  let mod;
+  let mod = null;
 
   beforeEach(async () => {
     jest.resetModules();
