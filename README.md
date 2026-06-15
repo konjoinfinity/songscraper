@@ -129,10 +129,19 @@ Two **human action items** that cannot be automated:
 2. Add the deployed `/oauth2callback` URL to the OAuth client's Authorized redirect URIs.
 3. (Maintenance) Re-pin the UG selectors in `src/config.js` if a scrape returns empty fields.
 
+CI/CD: PRs are gated by `.github/workflows/ci.yml` and merges to `main` auto-deploy to Cloud Run via
+`.github/workflows/deploy.yml` (keyless Workload Identity Federation) — see `DEPLOY.md` §7.
+
+## Trigger from your phone
+
+`POST /scrape` is all a phone needs. See **[docs/MOBILE.md](./docs/MOBILE.md)** for an **iOS Shortcut**
+that takes a shared Ultimate Guitar link from the Share Sheet, calls the service with the `x-api-key`,
+and opens the finished Google Doc.
+
 ## Out of scope (deferred)
 
-PDF auto-export, repeating-chord-pattern dedup, and the mobile trigger surface (PWA / Telegram bot /
-iOS Shortcut). Clean extension points are left in place.
+PDF auto-export, repeating-chord-pattern dedup, and other mobile surfaces (web PWA / Telegram bot).
+Clean extension points are left in place.
 
 ## Conventions
 
