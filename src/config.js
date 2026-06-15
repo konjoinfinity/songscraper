@@ -19,6 +19,12 @@ const {
   PROXY_PASSWORD,
   UNLOCKER_API_URL,
   UNLOCKER_API_KEY,
+  REMOTE_BROWSER_WS_ENDPOINT,
+  BROWSERBASE_API_KEY,
+  BROWSERBASE_PROJECT_ID,
+  BROWSERBASE_API_URL,
+  BROWSERBASE_REGION,
+  BROWSERBASE_PROXIES,
 } = process.env;
 
 export const config = {
@@ -68,9 +74,15 @@ export const config = {
   //   unlocker         — a scraping/"web unlocker" API returns rendered HTML,
   //                      which we load into the page (it solves Cloudflare + TLS
   //                      fingerprint + proxies internally).
+  //   remote           — connect (puppeteer.connect) to a *real* browser running
+  //                      on a managed provider (Browserless / Browserbase) that
+  //                      bundles stealth + residential IPs. This is the closest to
+  //                      "actually open a browser window": the window is real, it
+  //                      just runs on the provider's infra, not on Cloud Run.
   // Default is `direct` so local dev is unchanged. UG sits behind Cloudflare bot
   // protection that blocks headless Chrome from any IP (datacenter *and*
-  // residential), so the deployed service on Cloud Run needs `proxy`/`unlocker`.
+  // residential), so the deployed service on Cloud Run needs `proxy`/`unlocker`/
+  // `remote`.
   fetchStrategy: FETCH_STRATEGY || 'direct',
   // Residential/mobile proxy for FETCH_STRATEGY=proxy. `server` is the launch
   // arg value, e.g. "http://gw.example.com:7000". Creds are sent via page auth.
@@ -85,6 +97,24 @@ export const config = {
   unlocker: {
     apiUrl: UNLOCKER_API_URL || '',
     apiKey: UNLOCKER_API_KEY || '',
+  },
+  // Managed remote browser for FETCH_STRATEGY=remote. Two ways to point at one:
+  //   1. REMOTE_BROWSER_WS_ENDPOINT — a ready-to-use WebSocket endpoint we
+  //      `puppeteer.connect` to directly (Browserless and most providers, e.g.
+  //      "wss://production-sfo.browserless.io?token=KEY&proxy=residential").
+  //   2. Browserbase — no static WS endpoint; we POST to its API to mint a
+  //      session per scrape, then connect to the returned `connectUrl`.
+  // `wsEndpoint` wins if both are set. See src/fetcher.js (resolveRemoteEndpoint).
+  remote: {
+    wsEndpoint: REMOTE_BROWSER_WS_ENDPOINT || '',
+    browserbase: {
+      apiKey: BROWSERBASE_API_KEY || '',
+      projectId: BROWSERBASE_PROJECT_ID || '',
+      apiUrl: BROWSERBASE_API_URL || 'https://api.browserbase.com/v1/sessions',
+      region: BROWSERBASE_REGION || '',
+      // Route the session through Browserbase residential proxies (needed for UG).
+      proxies: BROWSERBASE_PROXIES !== 'false',
+    },
   },
 };
 

@@ -12,7 +12,14 @@
 //              Cloudflare interstitial if one appears.
 //   unlocker — fetch rendered HTML from a web-unlocker API and load it into the
 //              page via setContent (the API handles Cloudflare/TLS/proxy itself).
+//   remote   — connect to a real browser running on a managed provider
+//              (Browserless / Browserbase) with stealth + residential IPs, then
+//              navigate normally (the provider's browser passes Cloudflare).
+//
+// Browser acquisition (launch locally vs. connect remotely) also lives here, in
+// `createBrowserSession`, so scrapeSong stays agnostic to where the browser runs.
 
+import puppeteer from 'puppeteer';
 import { config, selectors } from './config.js';
 
 // Markers of a Cloudflare (or similar) bot-check interstitial, matched against
@@ -82,11 +89,83 @@ export async function fetchViaUnlocker(url) {
     const data = await res.json();
     const html = data.content ?? data.html ?? data.body ?? data.data;
     if (!html) {
-      throw new Error('Unlocker JSON response contained no HTML (expected content/html/body/data).');
+      throw new Error(
+        'Unlocker JSON response contained no HTML (expected content/html/body/data).'
+      );
     }
     return html;
   }
   return res.text();
+}
+
+/**
+ * Mint a Browserbase session and return its WebSocket `connectUrl`. Browserbase
+ * has no static endpoint — each scrape gets a fresh session (closed when the
+ * browser closes, which also stops proxy billing).
+ *
+ * THIS IS A PER-PROVIDER INTEGRATION POINT (like fetchViaUnlocker). The request
+ * shape is Browserbase's; adapt it for a different session-based provider.
+ * @returns {Promise<string>} the session's `connectUrl`
+ */
+export async function createBrowserbaseSession() {
+  const { apiKey, projectId, apiUrl, region, proxies } = config.remote.browserbase;
+  if (!apiKey || !projectId) {
+    throw new Error('Browserbase requires BROWSERBASE_API_KEY and BROWSERBASE_PROJECT_ID.');
+  }
+  const res = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-bb-api-key': apiKey },
+    body: JSON.stringify({ projectId, proxies, ...(region ? { region } : {}) }),
+  });
+  if (!res.ok) {
+    throw new Error(`Browserbase session create failed: ${res.status} ${res.statusText}`);
+  }
+  const data = await res.json();
+  if (!data.connectUrl) {
+    throw new Error('Browserbase response contained no connectUrl.');
+  }
+  return data.connectUrl;
+}
+
+/**
+ * Resolve the WebSocket endpoint to connect a remote browser to. Prefers an
+ * explicit endpoint (Browserless and most providers); otherwise mints one from
+ * Browserbase. Throws a clear, actionable error if nothing is configured.
+ * @returns {Promise<string>} a `browserWSEndpoint` for puppeteer.connect
+ */
+export async function resolveRemoteEndpoint() {
+  const { wsEndpoint, browserbase } = config.remote;
+  if (wsEndpoint) return wsEndpoint;
+  // `await` here (not a bare return) keeps this function genuinely async — it
+  // resolves a session before returning — so the contract is uniform: every
+  // branch settles a promise (string, resolved session, or rejection).
+  if (browserbase.apiKey && browserbase.projectId) return await createBrowserbaseSession();
+  throw new Error(
+    'FETCH_STRATEGY=remote but no remote browser is configured. Set ' +
+      'REMOTE_BROWSER_WS_ENDPOINT (e.g. a Browserless wss:// URL) or ' +
+      'BROWSERBASE_API_KEY + BROWSERBASE_PROJECT_ID. See README.md / DEPLOY.md.'
+  );
+}
+
+/**
+ * Acquire a Puppeteer browser for the configured fetch strategy. For `remote`,
+ * connect to a managed real browser; otherwise launch a local/container Chromium
+ * with the headless container-safe flags. The caller (scrapeSong) owns the
+ * lifecycle and closes it deterministically — `browser.close()` works for both a
+ * launched and a connected browser (and ends the remote session).
+ * @param {string} [strategy=config.fetchStrategy]
+ * @returns {Promise<import('puppeteer').Browser>}
+ */
+export async function createBrowserSession(strategy = config.fetchStrategy) {
+  if (strategy === 'remote') {
+    const browserWSEndpoint = await resolveRemoteEndpoint();
+    return puppeteer.connect({ browserWSEndpoint });
+  }
+  return puppeteer.launch({
+    headless: config.puppeteer.headless,
+    args: [...config.puppeteer.args, ...launchArgs(strategy)],
+    executablePath: config.puppeteer.executablePath,
+  });
 }
 
 /**
@@ -136,7 +215,9 @@ export async function loadChartPage(browser, url, strategy = config.fetchStrateg
   }
 
   await page.goto(url, { waitUntil: 'networkidle2' });
-  if (strategy === 'proxy') {
+  if (strategy === 'proxy' || strategy === 'remote') {
+    // The provider's browser usually clears Cloudflare itself, but wait out any
+    // residual interstitial before reading the chart.
     await waitForChallengeToClear(page);
   }
   // Best-effort: wait on the known render signal, but don't fail if it has rotted.

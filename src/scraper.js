@@ -2,10 +2,9 @@
 // Pure function of the URL: opens a browser, reads the chart, closes the browser
 // deterministically (try/finally), and returns the raw scraped fields.
 
-import puppeteer from 'puppeteer';
 import { config, selectors } from './config.js';
 import { detectChordBlock, parseTitleFromDocTitle } from './detect.js';
-import { loadChartPage, launchArgs, isChallengePage } from './fetcher.js';
+import { createBrowserSession, loadChartPage, isChallengePage } from './fetcher.js';
 
 /**
  * Read every match of `selector` and return the concatenated textContent.
@@ -63,11 +62,10 @@ export async function extractChordText(
 export async function scrapeSong(url) {
   let browser = null;
   try {
-    browser = await puppeteer.launch({
-      headless: config.puppeteer.headless,
-      args: [...config.puppeteer.args, ...launchArgs()],
-      executablePath: config.puppeteer.executablePath,
-    });
+    // Acquire the browser for the configured fetch strategy: a local headless
+    // Chromium for direct/proxy/unlocker, or a connection to a managed real
+    // browser for `remote`. Either way scrapeSong owns and closes it below.
+    browser = await createBrowserSession();
 
     // Acquire the chart page via the configured fetch strategy (direct/proxy/
     // unlocker). loadChartPage handles navigation, proxy auth, and the ready wait.
@@ -79,8 +77,9 @@ export async function scrapeSong(url) {
       throw new Error(
         'Blocked by anti-bot protection (a Cloudflare-style challenge page was returned ' +
           `instead of the chart). FETCH_STRATEGY is "${config.fetchStrategy}". UG blocks ` +
-          'headless Chrome from any IP; set FETCH_STRATEGY=unlocker (recommended) or =proxy ' +
-          'with a residential/mobile proxy. See README.md / DEPLOY.md.'
+          'headless Chrome from any IP; set FETCH_STRATEGY=remote (a managed real browser, ' +
+          'recommended) or =unlocker, or =proxy with a residential/mobile proxy. ' +
+          'See README.md / DEPLOY.md.'
       );
     }
 
