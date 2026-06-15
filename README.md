@@ -69,19 +69,38 @@ fall back to parsing `document.title` when their selectors fail.
 `SCRAPE_STRATEGY` decides how the chart text is **located** in a page; `FETCH_STRATEGY` decides how
 the page is **fetched**. They are orthogonal. Ultimate Guitar sits behind Cloudflare bot protection
 that serves a "Just a moment…" challenge to headless Chrome from **any** IP — datacenter *and*
-residential (confirmed against a clean residential connection). A headed browser passes, but Cloud
-Run has no display, so the deployed service needs a real-user egress:
+residential (confirmed against a clean residential connection). A real (headed) browser on a clean
+residential IP passes, but Cloud Run runs headless on datacenter IPs, so the deployed service needs a
+real-user egress. Note both signals matter: a headed browser fixes the *fingerprint*, but you still
+need a *residential IP* — the `remote` providers below bundle both.
 
 | `FETCH_STRATEGY` | Behavior | Use |
 |---|---|---|
 | `direct` (default) | Puppeteer navigates UG directly | local dev only — blocked on Cloud Run |
 | `proxy` | Puppeteer navigates through a residential/mobile proxy, then waits out the interstitial | cheaper, more tuning; set `PROXY_SERVER`/`PROXY_USERNAME`/`PROXY_PASSWORD` |
-| `unlocker` | a web-unlocker API returns rendered HTML (solves Cloudflare + TLS fingerprint + proxies) loaded via `setContent` | **recommended** for Cloud Run; set `UNLOCKER_API_URL`/`UNLOCKER_API_KEY` |
+| `unlocker` | a web-unlocker API returns rendered HTML (solves Cloudflare + TLS fingerprint + proxies) loaded via `setContent` | set `UNLOCKER_API_URL`/`UNLOCKER_API_KEY` |
+| `remote` | `puppeteer.connect`s to a **real browser** on a managed provider (Browserless / Browserbase) with stealth + residential IPs built in | **recommended** for Cloud Run — closest to "a real browser window", highest Cloudflare pass rate |
 
 The fetch layer lives in `src/fetcher.js` and funnels every strategy down to a single Puppeteer
-`page`, so extraction/formatting is reused unchanged. The unlocker request shape varies by provider
-(Bright Data, Scrapfly, Zyte, ScrapingBee, …) — `fetchViaUnlocker` is the one function to adapt. On
-the `direct`/`proxy` paths a clear, actionable error is thrown if a challenge page is detected.
+`page`, so extraction/formatting is reused unchanged. Browser acquisition (launch locally vs.
+`connect` to a remote browser) is `createBrowserSession`; the unlocker request shape varies by
+provider (Bright Data, Scrapfly, Zyte, ScrapingBee, …) — `fetchViaUnlocker` is the one function to
+adapt, as is `createBrowserbaseSession` for a session-based remote provider. On the
+`direct`/`proxy`/`remote` paths a clear, actionable error is thrown if a challenge page is detected.
+
+### `remote` — connecting a real browser
+
+Two ways to point at a managed browser (resolved by `resolveRemoteEndpoint`):
+
+- **Browserless** (or any provider exposing a static WebSocket endpoint): set
+  `REMOTE_BROWSER_WS_ENDPOINT` to the full `wss://…?token=…&proxy=residential` URL. We connect to it
+  directly. Treat the whole URL as a secret (it carries the token).
+- **Browserbase** (a fresh session is minted per scrape): set `BROWSERBASE_API_KEY` +
+  `BROWSERBASE_PROJECT_ID` (optional `BROWSERBASE_REGION`, `BROWSERBASE_PROXIES`). We POST to the
+  Browserbase API, then connect to the returned `connectUrl`. The session is closed when the scrape
+  finishes (`browser.close()`), which also stops proxy billing.
+
+`REMOTE_BROWSER_WS_ENDPOINT` wins if both are configured.
 
 ## Endpoints
 

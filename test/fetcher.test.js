@@ -1,13 +1,26 @@
 import { jest } from '@jest/globals';
-import { isChallengePage, launchArgs, fetchViaUnlocker, loadChartPage } from '../src/fetcher.js';
+import {
+  isChallengePage,
+  launchArgs,
+  fetchViaUnlocker,
+  loadChartPage,
+  resolveRemoteEndpoint,
+} from '../src/fetcher.js';
 
-const CHART_HTML = '<html><head><title>Open Shut Them Chords</title></head><body><pre>[Intro]</pre></body></html>';
+const CHART_HTML =
+  '<html><head><title>Open Shut Them Chords</title></head><body><pre>[Intro]</pre></body></html>';
 
 // A fake Puppeteer page that records calls without a real browser. Methods are
 // plain (non-async) — the code under test awaits them, and `await` on a
 // non-promise is a no-op, so this keeps the mock simple and lint-clean.
 function makeFakePage({ title = 'Open Shut Them Chords' } = {}) {
-  const calls = { setContent: [], goto: [], authenticate: [], waitForSelector: 0, waitForFunction: 0 };
+  const calls = {
+    setContent: [],
+    goto: [],
+    authenticate: [],
+    waitForSelector: 0,
+    waitForFunction: 0,
+  };
   return {
     _calls: calls,
     setDefaultNavigationTimeout: () => undefined,
@@ -31,7 +44,13 @@ function makeFakePage({ title = 'Open Shut Them Chords' } = {}) {
 const makeFakeBrowser = (page) => ({ newPage: () => page });
 
 // A minimal fetch Response stand-in.
-const fakeResponse = ({ ok = true, status = 200, statusText = 'OK', contentType = 'application/json', body } = {}) => ({
+const fakeResponse = ({
+  ok = true,
+  status = 200,
+  statusText = 'OK',
+  contentType = 'application/json',
+  body,
+} = {}) => ({
   ok,
   status,
   statusText,
@@ -42,7 +61,11 @@ const fakeResponse = ({ ok = true, status = 200, statusText = 'OK', contentType 
 
 describe('isChallengePage', () => {
   it('flags Cloudflare-style interstitials', () => {
-    for (const t of ['Just a moment...', 'Attention Required! | Cloudflare', 'Checking your browser']) {
+    for (const t of [
+      'Just a moment...',
+      'Attention Required! | Cloudflare',
+      'Checking your browser',
+    ]) {
       expect(isChallengePage(t)).toBe(true);
     }
   });
@@ -86,6 +109,23 @@ describe('fetchViaUnlocker', () => {
   });
 });
 
+describe('resolveRemoteEndpoint (no env)', () => {
+  it('throws a clear, actionable error when no remote browser is configured', async () => {
+    await expect(resolveRemoteEndpoint()).rejects.toThrow(/no remote browser is configured/);
+  });
+});
+
+describe('remote: navigation still waits out the Cloudflare interstitial', () => {
+  it('loadChartPage(remote) navigates and runs the challenge-clear wait', async () => {
+    const page = makeFakePage();
+    await loadChartPage(makeFakeBrowser(page), 'https://ug/x', 'remote');
+    expect(page._calls.goto).toHaveLength(1);
+    expect(page._calls.goto[0][0]).toBe('https://ug/x');
+    expect(page._calls.setContent).toHaveLength(0);
+    expect(page._calls.waitForFunction).toBe(1); // the challenge-clear wait
+  });
+});
+
 describe('unlocker path (env-configured)', () => {
   const OLD_ENV = process.env;
   let mod = null;
@@ -109,7 +149,8 @@ describe('unlocker path (env-configured)', () => {
   });
 
   it('fetchViaUnlocker returns HTML from a JSON envelope', async () => {
-    globalThis.fetch = () => fakeResponse({ contentType: 'application/json', body: { content: CHART_HTML } });
+    globalThis.fetch = () =>
+      fakeResponse({ contentType: 'application/json', body: { content: CHART_HTML } });
     expect(await mod.fetchViaUnlocker('https://ug/x')).toBe(CHART_HTML);
   });
 
@@ -119,12 +160,14 @@ describe('unlocker path (env-configured)', () => {
   });
 
   it('fetchViaUnlocker throws on a non-OK response', async () => {
-    globalThis.fetch = () => fakeResponse({ ok: false, status: 429, statusText: 'Too Many Requests' });
+    globalThis.fetch = () =>
+      fakeResponse({ ok: false, status: 429, statusText: 'Too Many Requests' });
     await expect(mod.fetchViaUnlocker('https://ug/x')).rejects.toThrow(/429/);
   });
 
   it('loadChartPage(unlocker) loads the fetched HTML via setContent, not goto', async () => {
-    globalThis.fetch = () => fakeResponse({ contentType: 'application/json', body: { html: CHART_HTML } });
+    globalThis.fetch = () =>
+      fakeResponse({ contentType: 'application/json', body: { html: CHART_HTML } });
     const page = makeFakePage();
     await mod.loadChartPage(makeFakeBrowser(page), 'https://ug/x', 'unlocker');
     expect(page._calls.setContent).toHaveLength(1);
@@ -140,5 +183,48 @@ describe('unlocker path (env-configured)', () => {
     const page = makeFakePage();
     await mod.loadChartPage(makeFakeBrowser(page), 'https://ug/x', 'proxy');
     expect(page._calls.authenticate).toEqual([{ username: 'user', password: 'pass' }]);
+  });
+});
+
+describe('remote endpoint resolution (env-configured)', () => {
+  const OLD_ENV = process.env;
+  afterEach(() => {
+    process.env = OLD_ENV;
+    delete globalThis.fetch;
+  });
+
+  it('prefers an explicit REMOTE_BROWSER_WS_ENDPOINT (e.g. Browserless)', async () => {
+    jest.resetModules();
+    process.env = { ...OLD_ENV, REMOTE_BROWSER_WS_ENDPOINT: 'wss://chrome.example?token=abc' };
+    const mod = await import('../src/fetcher.js');
+    expect(await mod.resolveRemoteEndpoint()).toBe('wss://chrome.example?token=abc');
+  });
+
+  it('mints a Browserbase session and returns its connectUrl', async () => {
+    jest.resetModules();
+    process.env = { ...OLD_ENV, BROWSERBASE_API_KEY: 'bb-key', BROWSERBASE_PROJECT_ID: 'proj-1' };
+    const mod = await import('../src/fetcher.js');
+    globalThis.fetch = () =>
+      fakeResponse({
+        contentType: 'application/json',
+        body: { connectUrl: 'wss://bb.example/session/1' },
+      });
+    expect(await mod.resolveRemoteEndpoint()).toBe('wss://bb.example/session/1');
+  });
+
+  it('throws when the Browserbase session response has no connectUrl', async () => {
+    jest.resetModules();
+    process.env = { ...OLD_ENV, BROWSERBASE_API_KEY: 'bb-key', BROWSERBASE_PROJECT_ID: 'proj-1' };
+    const mod = await import('../src/fetcher.js');
+    globalThis.fetch = () => fakeResponse({ contentType: 'application/json', body: {} });
+    await expect(mod.createBrowserbaseSession()).rejects.toThrow(/no connectUrl/);
+  });
+
+  it('throws on a non-OK Browserbase response', async () => {
+    jest.resetModules();
+    process.env = { ...OLD_ENV, BROWSERBASE_API_KEY: 'bb-key', BROWSERBASE_PROJECT_ID: 'proj-1' };
+    const mod = await import('../src/fetcher.js');
+    globalThis.fetch = () => fakeResponse({ ok: false, status: 401, statusText: 'Unauthorized' });
+    await expect(mod.createBrowserbaseSession()).rejects.toThrow(/401/);
   });
 });

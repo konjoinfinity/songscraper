@@ -103,8 +103,27 @@ Now:
 > **⚠️ Anti-bot — `FETCH_STRATEGY` is required on Cloud Run.** Ultimate Guitar is behind Cloudflare
 > bot protection that blocks headless Chrome from any IP, so the default `FETCH_STRATEGY=direct` will
 > return a "Just a moment…" challenge and the scrape will fail with a clear error. Set a real-user
-> egress on the deployed service (see README → *Fetching past Cloudflare*). Recommended — a web
-> unlocker API:
+> egress on the deployed service (see README → *Fetching past Cloudflare*).
+>
+> **Recommended — `remote`: connect to a real browser on a managed provider** (Browserless or
+> Browserbase) that bundles stealth + residential IPs. Cloud Run keeps orchestrating; only the browser
+> runs on the provider. Create the secret first (step 3 pattern), then:
+> ```bash
+> # Option A — Browserless (static WS endpoint; the whole URL is the secret)
+> printf '%s' "wss://production-sfo.browserless.io?token=YOUR_TOKEN&proxy=residential" \
+>   | gcloud secrets create REMOTE_BROWSER_WS_ENDPOINT --data-file=-
+> gcloud run services update songscraper --region="$REGION" \
+>   --update-env-vars="FETCH_STRATEGY=remote" \
+>   --update-secrets="REMOTE_BROWSER_WS_ENDPOINT=REMOTE_BROWSER_WS_ENDPOINT:latest"
+>
+> # Option B — Browserbase (a session is minted per scrape)
+> printf '%s' "YOUR_BROWSERBASE_API_KEY" | gcloud secrets create BROWSERBASE_API_KEY --data-file=-
+> gcloud run services update songscraper --region="$REGION" \
+>   --update-env-vars="FETCH_STRATEGY=remote,BROWSERBASE_PROJECT_ID=YOUR_PROJECT_ID" \
+>   --update-secrets="BROWSERBASE_API_KEY=BROWSERBASE_API_KEY:latest"
+> ```
+>
+> Alternatives — a **web unlocker API** (returns rendered HTML, no browser):
 > ```bash
 > gcloud run services update songscraper --region="$REGION" \
 >   --update-env-vars="FETCH_STRATEGY=unlocker,UNLOCKER_API_URL=https://api.provider.com/unlock" \
