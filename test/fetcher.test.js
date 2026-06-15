@@ -2,6 +2,7 @@ import { jest } from '@jest/globals';
 import {
   isChallengePage,
   launchArgs,
+  launchOptions,
   fetchViaUnlocker,
   loadChartPage,
   resolveRemoteEndpoint,
@@ -85,14 +86,29 @@ describe('launchArgs', () => {
   });
 });
 
+describe('launchOptions (no env)', () => {
+  it('defaults to headless with the container-safe flags and no executablePath', () => {
+    const opts = launchOptions('direct');
+    expect(opts.headless).toBe(true);
+    expect(opts.args).toEqual([
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+    ]);
+    expect(opts.executablePath).toBeUndefined();
+  });
+});
+
 describe('loadChartPage — strategy wiring (no env)', () => {
-  it('direct: navigates to the URL and never uses setContent', async () => {
+  it('direct: navigates, waits out any interstitial, and never uses setContent', async () => {
     const page = makeFakePage();
     await loadChartPage(makeFakeBrowser(page), 'https://ug/x', 'direct');
     expect(page._calls.goto).toHaveLength(1);
     expect(page._calls.goto[0][0]).toBe('https://ug/x');
     expect(page._calls.setContent).toHaveLength(0);
     expect(page._calls.waitForSelector).toBe(1);
+    expect(page._calls.waitForFunction).toBe(1); // the challenge-clear wait
   });
 
   it('proxy: navigates and waits out the challenge interstitial', async () => {
@@ -183,6 +199,34 @@ describe('unlocker path (env-configured)', () => {
     const page = makeFakePage();
     await mod.loadChartPage(makeFakeBrowser(page), 'https://ug/x', 'proxy');
     expect(page._calls.authenticate).toEqual([{ username: 'user', password: 'pass' }]);
+  });
+});
+
+describe('launchOptions — self-hosted headed browser (env-configured)', () => {
+  const OLD_ENV = process.env;
+  afterEach(() => {
+    process.env = OLD_ENV;
+  });
+
+  it('launches a real (headed) browser when PUPPETEER_HEADLESS=false', async () => {
+    jest.resetModules();
+    process.env = {
+      ...OLD_ENV,
+      PUPPETEER_HEADLESS: 'false',
+      PUPPETEER_EXECUTABLE_PATH: '/usr/bin/chromium',
+    };
+    const mod = await import('../src/fetcher.js');
+    const opts = mod.launchOptions('direct');
+    expect(opts.headless).toBe(false);
+    expect(opts.executablePath).toBe('/usr/bin/chromium');
+    expect(opts.args).toContain('--no-sandbox');
+  });
+
+  it('stays headless for any value other than the literal "false"', async () => {
+    jest.resetModules();
+    process.env = { ...OLD_ENV, PUPPETEER_HEADLESS: 'true' };
+    const mod = await import('../src/fetcher.js');
+    expect(mod.launchOptions('direct').headless).toBe(true);
   });
 });
 

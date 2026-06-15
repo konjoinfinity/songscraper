@@ -11,6 +11,7 @@ const {
   TEMPLATE_DOC_ID,
   DRIVE_FOLDER_ID,
   PUPPETEER_EXECUTABLE_PATH,
+  PUPPETEER_HEADLESS,
   SCRAPE_STRATEGY,
   DETECT_MIN_SCORE,
   FETCH_STRATEGY,
@@ -52,7 +53,12 @@ export const config = {
   driveFolderId: DRIVE_FOLDER_ID || '',
 
   puppeteer: {
-    headless: true,
+    // Headless by default (container/Cloud Run). Set PUPPETEER_HEADLESS=false to
+    // launch a *real* (headed) Chrome — the sanctioned self-hosted path: on your
+    // own residential hardware (e.g. a Raspberry Pi under Xvfb), where UG's
+    // Cloudflare wall lets a real browser on a residential IP through. See
+    // docs/RASPBERRY_PI.md. Only `false` flips it; anything else stays headless.
+    headless: PUPPETEER_HEADLESS !== 'false',
     // Container-safe flags. --no-sandbox is required to run Chromium as root in a container.
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
     executablePath: PUPPETEER_EXECUTABLE_PATH || undefined,

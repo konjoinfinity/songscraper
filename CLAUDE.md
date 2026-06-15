@@ -25,14 +25,17 @@ bash .konjo/scripts/install-hooks.sh   # install Wall 1 pre-commit hook
   fixture *and* explicit sign-off.
 - **No secrets in code.** `creds.json`, `token.json`, `.env`, and refresh tokens live in env vars /
   Secret Manager only. They are git-ignored. Never write `token.json` to disk on the deployed path.
-- **Headless when launching locally; real browser only via a managed provider.** When Puppeteer
-  *launches* a browser (the `direct`/`proxy`/`unlocker` fetch strategies), it must use `headless: true`
-  and the container-safe flags (`--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage
-  --disable-gpu`) — no visible browser in our container/Cloud Run. The one sanctioned way to use a
-  *real (headed)* browser is `FETCH_STRATEGY=remote`, which `puppeteer.connect`s to a browser running
-  on a managed provider (Browserless / Browserbase) — the headed window runs on their infra, never
-  ours. (Signed off 2026-06-15: needed to get past UG's Cloudflare bot wall, which blocks headless
-  Chrome from any IP. See README → *Fetching past Cloudflare*.)
+- **Headless by default; a real (headed) browser only on sanctioned paths.** When Puppeteer *launches*
+  a browser it defaults to `headless: true` with the container-safe flags (`--no-sandbox
+  --disable-setuid-sandbox --disable-dev-shm-usage --disable-gpu`) — no visible browser in our
+  container/Cloud Run. Two sanctioned ways to use a *real (headed)* browser, both to get past UG's
+  Cloudflare wall (which blocks headless Chrome from any IP):
+  1. `FETCH_STRATEGY=remote` — `puppeteer.connect`s to a browser on a managed provider (Browserless /
+     Browserbase); the headed window runs on their infra, never ours. (Signed off 2026-06-15.)
+  2. `PUPPETEER_HEADLESS=false` — launch a headed browser on the **operator's own residential
+     hardware** (e.g. a Raspberry Pi under Xvfb) where the residential IP + real fingerprint clear
+     Cloudflare for free. The default stays `true`, so Cloud Run is unaffected. (Signed off 2026-06-15.
+     See docs/RASPBERRY_PI.md.)
 - **No timing hacks.** No `setTimeout`-based control flow. Use `await page.waitForSelector(...)` and
   awaited promises. Open and close the browser deterministically inside `scrapeSong`.
 - **`/scrape` is never open.** It requires the `x-api-key` shared-secret header and a validated
