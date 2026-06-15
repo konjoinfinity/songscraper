@@ -18,6 +18,20 @@ async function readJoined(page, selector) {
 }
 
 /**
+ * Read the first match of `selector` and return its textContent ('' if none).
+ * Used for single-valued fields (title, artist) where the selector may match
+ * repeated links (e.g. the artist link appears several times on a UG page) and
+ * joining every match would duplicate the value.
+ * @param {import('puppeteer').Page} page - the Puppeteer page
+ * @param {string} selector - a CSS selector
+ * @returns {Promise<string>} the first match's textContent, or ''
+ */
+export async function readFirst(page, selector) {
+  const parts = await page.$$eval(selector, (els) => els.map((el) => el.textContent));
+  return parts[0] ?? '';
+}
+
+/**
  * Resolve the chord-chart text using the configured strategy.
  * @param {import('puppeteer').Page} page
  * @param {string} [strategy=config.scrapeStrategy]
@@ -64,8 +78,8 @@ export async function scrapeSong(url) {
     await page.waitForSelector(selectors.ready).catch(() => null);
 
     const rawText = await extractChordText(page);
-    const rawTitle = await readJoined(page, selectors.title);
-    const rawArtist = await readJoined(page, selectors.artist);
+    const rawTitle = await readFirst(page, selectors.title);
+    const rawArtist = await readFirst(page, selectors.artist);
 
     // Legacy cleaning: strip " Chords" from the title and "Edit" from the artist.
     let title = rawTitle.replace(' Chords', '');

@@ -1,4 +1,4 @@
-import { extractChordText } from '../src/scraper.js';
+import { extractChordText, readFirst } from '../src/scraper.js';
 
 // A strong chord-chart candidate (chords-above-lyrics with section headers).
 const CHART = `[Verse 1]
@@ -62,5 +62,18 @@ describe('extractChordText — strategy wiring', () => {
     const page = makePage({ candidates: [{ tag: 'pre', text: CHART }] });
     const text = await extractChordText(page, 'selector', 5);
     expect(text).toBe(SELECTOR_TEXT);
+  });
+});
+
+describe('readFirst — single-valued field reads', () => {
+  it('returns the first match when a selector repeats (e.g. the artist link)', async () => {
+    // UG renders the artist link several times; readJoined would duplicate it.
+    const page = makePage({ selectorParts: ['Misc Children', 'Misc Children', 'Misc Children'] });
+    expect(await readFirst(page, 'a[href*="/artist/"]')).toBe('Misc Children');
+  });
+
+  it('returns an empty string when nothing matches', async () => {
+    const page = makePage({ selectorParts: [] });
+    expect(await readFirst(page, 'h1')).toBe('');
   });
 });

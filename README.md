@@ -34,7 +34,13 @@ test/
   scraper-strategy.test.js extractChordText strategy wiring (fake page, no browser)
   formatter.test.js        regression: refactored payload === legacy payload
   formatter.fixture.json   captured legacy batchUpdate payload (golden)
+  e2e.test.js              real UG fixtures through the full pipeline (headless setContent)
+  fixtures/e2e/            trimmed snapshots of 10 live UG pages + manifest.json
 ```
+
+The **E2E suite** loads each saved page into headless Chrome via `setContent` (no network — immune to
+Cloudflare, fully deterministic) and runs the exact extraction pipeline, asserting the right chart,
+title, and artist for 10 real songs. It self-skips if no Chromium binary is present.
 
 ## How extraction works
 

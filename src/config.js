@@ -57,17 +57,23 @@ export const config = {
 };
 
 // Ultimate Guitar DOM selectors. These rot whenever UG ships a markup change.
-// LAST VERIFIED: 2024 (against the legacy code) — re-pin against a live page if a
-// scrape returns empty fields. Centralized here precisely so re-pinning is a one-line edit.
+// LAST VERIFIED: 2026-06-14 against a live page (npm run validate). UG's class
+// names are build-hashed (e.g. `.QsmqP`, `.c4glK`) and churn on every deploy, so
+// these are pinned to stable structure/semantics (tag, href) rather than classes.
+// Centralized here precisely so re-pinning is a one-line edit.
 export const selectors = {
   // A selector that signals the chart has rendered; we wait on it before reading.
-  ready: '.P8ReX',
+  // The chart lives in a <pre>, which is the same element we read — a reliable
+  // render signal that doesn't depend on a hashed class name.
+  ready: 'pre',
   // The <pre> block(s) holding the chord chart text.
   chordBlock: 'pre',
-  // The song title (an <h1> ending in " Chords").
-  title: 'header > div > h1',
-  // The artist link.
-  artist: 'header > div > span > a',
+  // The song title (an <h1> ending in " Chords"; the legacy " Chords" strip in
+  // scraper.js still applies).
+  title: 'h1',
+  // The artist link, pinned by its /artist/ href (stable across UG markup
+  // changes). The page repeats this link; scraper.js reads the first match.
+  artist: 'a[href*="/artist/"]',
 };
 
 /**
