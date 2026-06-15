@@ -109,22 +109,22 @@ describe('unlocker path (env-configured)', () => {
   });
 
   it('fetchViaUnlocker returns HTML from a JSON envelope', async () => {
-    globalThis.fetch = async () => fakeResponse({ contentType: 'application/json', body: { content: CHART_HTML } });
+    globalThis.fetch = () => fakeResponse({ contentType: 'application/json', body: { content: CHART_HTML } });
     expect(await mod.fetchViaUnlocker('https://ug/x')).toBe(CHART_HTML);
   });
 
   it('fetchViaUnlocker returns a raw-HTML body', async () => {
-    globalThis.fetch = async () => fakeResponse({ contentType: 'text/html', body: CHART_HTML });
+    globalThis.fetch = () => fakeResponse({ contentType: 'text/html', body: CHART_HTML });
     expect(await mod.fetchViaUnlocker('https://ug/x')).toBe(CHART_HTML);
   });
 
   it('fetchViaUnlocker throws on a non-OK response', async () => {
-    globalThis.fetch = async () => fakeResponse({ ok: false, status: 429, statusText: 'Too Many Requests' });
+    globalThis.fetch = () => fakeResponse({ ok: false, status: 429, statusText: 'Too Many Requests' });
     await expect(mod.fetchViaUnlocker('https://ug/x')).rejects.toThrow(/429/);
   });
 
   it('loadChartPage(unlocker) loads the fetched HTML via setContent, not goto', async () => {
-    globalThis.fetch = async () => fakeResponse({ contentType: 'application/json', body: { html: CHART_HTML } });
+    globalThis.fetch = () => fakeResponse({ contentType: 'application/json', body: { html: CHART_HTML } });
     const page = makeFakePage();
     await mod.loadChartPage(makeFakeBrowser(page), 'https://ug/x', 'unlocker');
     expect(page._calls.setContent).toHaveLength(1);
