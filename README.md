@@ -64,6 +64,25 @@ misbehaves in production (flip the env var, no code change):
 trusted — a weak best-candidate is rejected rather than scraping the wrong element. Title/artist also
 fall back to parsing `document.title` when their selectors fail.
 
+## Fetching past Cloudflare (`FETCH_STRATEGY`)
+
+`SCRAPE_STRATEGY` decides how the chart text is **located** in a page; `FETCH_STRATEGY` decides how
+the page is **fetched**. They are orthogonal. Ultimate Guitar sits behind Cloudflare bot protection
+that serves a "Just a moment…" challenge to headless Chrome from **any** IP — datacenter *and*
+residential (confirmed against a clean residential connection). A headed browser passes, but Cloud
+Run has no display, so the deployed service needs a real-user egress:
+
+| `FETCH_STRATEGY` | Behavior | Use |
+|---|---|---|
+| `direct` (default) | Puppeteer navigates UG directly | local dev only — blocked on Cloud Run |
+| `proxy` | Puppeteer navigates through a residential/mobile proxy, then waits out the interstitial | cheaper, more tuning; set `PROXY_SERVER`/`PROXY_USERNAME`/`PROXY_PASSWORD` |
+| `unlocker` | a web-unlocker API returns rendered HTML (solves Cloudflare + TLS fingerprint + proxies) loaded via `setContent` | **recommended** for Cloud Run; set `UNLOCKER_API_URL`/`UNLOCKER_API_KEY` |
+
+The fetch layer lives in `src/fetcher.js` and funnels every strategy down to a single Puppeteer
+`page`, so extraction/formatting is reused unchanged. The unlocker request shape varies by provider
+(Bright Data, Scrapfly, Zyte, ScrapingBee, …) — `fetchViaUnlocker` is the one function to adapt. On
+the `direct`/`proxy` paths a clear, actionable error is thrown if a challenge page is detected.
+
 ## Endpoints
 
 | Method | Route | Auth | Purpose |

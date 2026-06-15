@@ -13,6 +13,12 @@ const {
   PUPPETEER_EXECUTABLE_PATH,
   SCRAPE_STRATEGY,
   DETECT_MIN_SCORE,
+  FETCH_STRATEGY,
+  PROXY_SERVER,
+  PROXY_USERNAME,
+  PROXY_PASSWORD,
+  UNLOCKER_API_URL,
+  UNLOCKER_API_KEY,
 } = process.env;
 
 export const config = {
@@ -54,6 +60,32 @@ export const config = {
   scrapeStrategy: SCRAPE_STRATEGY || 'heuristic',
   // Minimum chord-chart score the heuristic must clear to be trusted.
   detectMinScore: Number(DETECT_MIN_SCORE) || 5,
+
+  // How the chart page is *fetched* (orthogonal to how the chart text is then
+  // extracted, which is scrapeStrategy above):
+  //   direct (default) — Puppeteer navigates UG itself (today's behavior).
+  //   proxy            — Puppeteer navigates through a residential/mobile proxy.
+  //   unlocker         — a scraping/"web unlocker" API returns rendered HTML,
+  //                      which we load into the page (it solves Cloudflare + TLS
+  //                      fingerprint + proxies internally).
+  // Default is `direct` so local dev is unchanged. UG sits behind Cloudflare bot
+  // protection that blocks headless Chrome from any IP (datacenter *and*
+  // residential), so the deployed service on Cloud Run needs `proxy`/`unlocker`.
+  fetchStrategy: FETCH_STRATEGY || 'direct',
+  // Residential/mobile proxy for FETCH_STRATEGY=proxy. `server` is the launch
+  // arg value, e.g. "http://gw.example.com:7000". Creds are sent via page auth.
+  proxy: {
+    server: PROXY_SERVER || '',
+    username: PROXY_USERNAME || '',
+    password: PROXY_PASSWORD || '',
+  },
+  // Web-unlocker / scraping API for FETCH_STRATEGY=unlocker. The exact request
+  // shape varies by provider — see src/fetcher.js (fetchViaUnlocker) for the one
+  // integration point to adapt.
+  unlocker: {
+    apiUrl: UNLOCKER_API_URL || '',
+    apiKey: UNLOCKER_API_KEY || '',
+  },
 };
 
 // Ultimate Guitar DOM selectors. These rot whenever UG ships a markup change.
