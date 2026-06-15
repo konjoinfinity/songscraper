@@ -102,11 +102,11 @@ export function scoreChordText(text) {
  * or section headers). 1.0 means a pure chart; lower means the block also wraps
  * navigation, metadata, or lyrics-only text. Used to prefer the *tightest* block
  * that still contains the whole chart over a parent that dilutes it with chrome.
- * @param {{ chord: number, section: number, nonBlank: number }} a - analyzeChordText() result
+ * @param {{ chord: number, section: number, nonBlank: number }} stats - analyzeChordText() result
  * @returns {number} chart-line density in [0, 1]
  */
-function chartDensity(a) {
-  return a.nonBlank ? (a.chord + a.section) / a.nonBlank : 0;
+function chartDensity(stats) {
+  return stats.nonBlank ? (stats.chord + stats.section) / stats.nonBlank : 0;
 }
 
 // A modest preference for <pre> elements. Chord charts are preformatted text, so
@@ -125,12 +125,12 @@ const PRE_BONUS = 1.3;
  * starves stray fragments (high density, low score). The <pre> bonus then breaks
  * the residual "core vs tuning-preamble superset" tie toward the tight chart.
  * @param {{ tag?: string, text: string }} candidate
- * @param {{ score: number, chord: number, section: number, nonBlank: number }} a - analyzeChordText() result
+ * @param {{ score: number, chord: number, section: number, nonBlank: number }} stats - analyzeChordText() result
  * @returns {number}
  */
-function candidateWeight(candidate, a) {
+function candidateWeight(candidate, stats) {
   const tagBonus = candidate.tag === 'pre' ? PRE_BONUS : 1;
-  return a.score * chartDensity(a) * tagBonus;
+  return stats.score * chartDensity(stats) * tagBonus;
 }
 
 /**
@@ -143,10 +143,10 @@ function candidateWeight(candidate, a) {
 export function pickBestCandidate(candidates) {
   let best = null;
   for (const candidate of candidates) {
-    const a = analyzeChordText(candidate.text);
-    if (a.score <= 0) continue;
-    const weighted = candidateWeight(candidate, a);
-    const scored = { ...candidate, score: a.score, weighted };
+    const stats = analyzeChordText(candidate.text);
+    if (stats.score <= 0) continue;
+    const weighted = candidateWeight(candidate, stats);
+    const scored = { ...candidate, score: stats.score, weighted };
     const better =
       !best ||
       weighted > best.weighted ||

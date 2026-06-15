@@ -143,11 +143,11 @@ describe('pickBestCandidate', () => {
 
 describe('analyzeChordText', () => {
   it('reports line tallies and a score consistent with scoreChordText', () => {
-    const a = analyzeChordText(CHART);
-    expect(a.score).toBe(scoreChordText(CHART));
-    expect(a.chord).toBeGreaterThan(0);
-    expect(a.section).toBeGreaterThan(0);
-    expect(a.nonBlank).toBeGreaterThanOrEqual(a.chord + a.section);
+    const stats = analyzeChordText(CHART);
+    expect(stats.score).toBe(scoreChordText(CHART));
+    expect(stats.chord).toBeGreaterThan(0);
+    expect(stats.section).toBeGreaterThan(0);
+    expect(stats.nonBlank).toBeGreaterThanOrEqual(stats.chord + stats.section);
   });
   it('returns an all-zero result for non-chart text', () => {
     expect(analyzeChordText(NAV)).toEqual({

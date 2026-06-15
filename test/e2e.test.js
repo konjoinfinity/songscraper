@@ -35,12 +35,12 @@ const canRun = manifest.length > 0 && chromePath && existsSync(chromePath);
 const describeE2E = canRun ? describe : describe.skip;
 
 describeE2E('E2E — real UG fixtures through the extraction pipeline', () => {
-  let browser;
-  let warn;
+  let browser = null;
+  let warn = null;
   beforeAll(async () => {
     // detect.js logs an informational warning on every match; silence it here.
     warn = console.warn;
-    console.warn = () => {};
+    console.warn = () => undefined;
     browser = await puppeteer.launch({
       headless: true,
       args: config.puppeteer.args,
@@ -52,47 +52,45 @@ describeE2E('E2E — real UG fixtures through the extraction pipeline', () => {
     console.warn = warn;
   });
 
-  for (const entry of manifest) {
-    const isGuitarPro = entry.slug.includes('guitar-pro');
+  // test.each (one call, not a function declared in a loop) over the manifest.
+  test.each(manifest)(
+    '$slug',
+    async (entry) => {
+      const isGuitarPro = entry.slug.includes('guitar-pro');
+      const html = readFileSync(fix(entry.file), 'utf8');
+      const page = await browser.newPage();
+      try {
+        await page.setContent(html, { waitUntil: 'domcontentloaded' });
 
-    test(
-      entry.slug,
-      async () => {
-        const html = readFileSync(fix(entry.file), 'utf8');
-        const page = await browser.newPage();
-        try {
-          await page.setContent(html, { waitUntil: 'domcontentloaded' });
+        // Title/artist resolve from the re-pinned selectors (CSS-independent
+        // textContent reads), with the legacy cleaning applied.
+        const title = (await readFirst(page, selectors.title)).replace(' Chords', '').trim();
+        const artist = (await readFirst(page, selectors.artist)).replace('Edit', '').trim();
+        expect(title).toBe(entry.expectTitle);
+        expect(artist).toBe(entry.expectArtist);
 
-          // Title/artist resolve from the re-pinned selectors (CSS-independent
-          // textContent reads), with the legacy cleaning applied.
-          const title = (await readFirst(page, selectors.title)).replace(' Chords', '').trim();
-          const artist = (await readFirst(page, selectors.artist)).replace('Edit', '').trim();
-          expect(title).toBe(entry.expectTitle);
-          expect(artist).toBe(entry.expectArtist);
+        const selText = await extractChordText(page, 'selector', config.detectMinScore);
 
-          const selText = await extractChordText(page, 'selector', config.detectMinScore);
-
-          if (isGuitarPro) {
-            // A Guitar Pro tab has no chord <pre> — document that the chords
-            // selector path yields nothing (the service should reject/redirect
-            // these; they are not chord charts).
-            expect(selText).toBe('');
-            return;
-          }
-
-          // Selector path: the exact chord block, by length and a section marker.
-          expect(selText.length).toBeGreaterThanOrEqual(entry.minLen);
-          expect(selText).toContain(entry.marker);
-
-          // Default heuristic path returns the chart too (must contain the same
-          // section marker — this is the over-capture regression, live).
-          const heurText = await extractChordText(page, 'heuristic', config.detectMinScore);
-          expect(heurText).toContain(entry.marker);
-        } finally {
-          await page.close();
+        if (isGuitarPro) {
+          // A Guitar Pro tab has no chord <pre> — document that the chords
+          // selector path yields nothing (the service should reject/redirect
+          // these; they are not chord charts).
+          expect(selText).toBe('');
+          return;
         }
-      },
-      30000
-    );
-  }
+
+        // Selector path: the exact chord block, by length and a section marker.
+        expect(selText.length).toBeGreaterThanOrEqual(entry.minLen);
+        expect(selText).toContain(entry.marker);
+
+        // Default heuristic path returns the chart too (must contain the same
+        // section marker — this is the over-capture regression, live).
+        const heurText = await extractChordText(page, 'heuristic', config.detectMinScore);
+        expect(heurText).toContain(entry.marker);
+      } finally {
+        await page.close();
+      }
+    },
+    30000
+  );
 });
