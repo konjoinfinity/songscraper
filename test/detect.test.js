@@ -1,6 +1,7 @@
 import {
   isChordToken,
   classifyLine,
+  analyzeChordText,
   scoreChordText,
   pickBestCandidate,
   parseTitleFromDocTitle,
@@ -104,6 +105,58 @@ describe('pickBestCandidate', () => {
 
   it('returns null when nothing looks like a chart', () => {
     expect(pickBestCandidate([{ tag: 'div', text: BIO }])).toBeNull();
+  });
+
+  // Regression for the live-UG over-capture bug: a parent <div> that wraps the
+  // chart in a tuning/key preamble scores HIGHER on raw count (the preamble
+  // lines read as chords) yet must lose to the tight <pre>. Raw-score selection
+  // picked the wrapper; density + the <pre> bonus pick the core chart.
+  it('prefers the tight <pre> over a higher-scoring preamble superset', () => {
+    // UG's div.innerText concatenates the tuning/key/capo metadata into one line
+    // ahead of the chart (this is the real shape that beat the <pre> on raw score
+    // in the live validation: div score 77 > pre 75).
+    const superset = `Tuning: E A D G B E Key: D Capo: 1st fret\n${CHART}`;
+    // The wrapper genuinely out-scores the bare chart on raw count...
+    expect(scoreChordText(superset)).toBeGreaterThan(scoreChordText(CHART));
+    // ...but selection must still return the tight chart, not the superset.
+    const best = pickBestCandidate([
+      { tag: 'div', text: superset },
+      { tag: 'pre', text: CHART },
+    ]);
+    expect(best.text).toBe(CHART);
+  });
+
+  // The body wrapper on a real page out-scores the chart purely by absorbing the
+  // chart's lines plus a lot of low-density nav; density must demote it.
+  it('demotes a nav-diluted wrapper that out-scores the chart on raw count', () => {
+    const nav = Array.from({ length: 40 }, (_, i) => `Menu link number ${i}`).join('\n');
+    const chordLegend = 'G\nC\nD\nEm\nAm\nF'; // chord-diagram labels, one per line
+    const wrapper = `${nav}\n${chordLegend}\n${CHART}\n${nav}`;
+    expect(scoreChordText(wrapper)).toBeGreaterThan(scoreChordText(CHART));
+    const best = pickBestCandidate([
+      { tag: 'div', text: wrapper },
+      { tag: 'pre', text: CHART },
+    ]);
+    expect(best.text).toBe(CHART);
+  });
+});
+
+describe('analyzeChordText', () => {
+  it('reports line tallies and a score consistent with scoreChordText', () => {
+    const a = analyzeChordText(CHART);
+    expect(a.score).toBe(scoreChordText(CHART));
+    expect(a.chord).toBeGreaterThan(0);
+    expect(a.section).toBeGreaterThan(0);
+    expect(a.nonBlank).toBeGreaterThanOrEqual(a.chord + a.section);
+  });
+  it('returns an all-zero result for non-chart text', () => {
+    expect(analyzeChordText(NAV)).toEqual({
+      score: 0,
+      chord: 0,
+      section: 0,
+      aligned: 0,
+      nonBlank: 0,
+    });
   });
 });
 

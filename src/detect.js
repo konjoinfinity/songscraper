@@ -56,15 +56,15 @@ export function classifyLine(line) {
 }
 
 /**
- * Score how chord-chart-like a block of text is. Higher is better; 0 means "not
- * a chart". Section headers are weighted most (very distinctive), then chord
- * lines, with a small bonus for alignment whitespace. Blocks with too little
- * substance score 0 to avoid latching onto a stray two-line snippet.
+ * Break a block of text into its chord-chart line tallies. Pure and cheap; the
+ * basis for both the absolute score and the density used to pick between nested
+ * candidates.
  * @param {string} text
- * @returns {number}
+ * @returns {{ score: number, chord: number, section: number, aligned: number, nonBlank: number }}
  */
-export function scoreChordText(text) {
-  if (!text) return 0;
+export function analyzeChordText(text) {
+  const empty = { score: 0, chord: 0, section: 0, aligned: 0, nonBlank: 0 };
+  if (!text) return empty;
   const lines = text.split(/\r\n|\r|\n/);
 
   let chord = 0;
@@ -80,28 +80,78 @@ export function scoreChordText(text) {
     if (/\S\s{2,}\S/.test(line)) aligned += 1;
   }
 
-  if (nonBlank < 4) return 0;
-  if (chord === 0 && section === 0) return 0;
-  return chord * 2 + section * 3 + aligned;
+  if (nonBlank < 4) return empty;
+  if (chord === 0 && section === 0) return empty;
+  return { score: chord * 2 + section * 3 + aligned, chord, section, aligned, nonBlank };
 }
 
 /**
- * Choose the best candidate block. Prefers the highest score; on a tie, prefers
- * the *shorter* block, which tends to be the tightest element that still wraps
- * the whole chart (rather than a parent container that also contains nav/ads).
+ * Score how chord-chart-like a block of text is. Higher is better; 0 means "not
+ * a chart". Section headers are weighted most (very distinctive), then chord
+ * lines, with a small bonus for alignment whitespace. Blocks with too little
+ * substance score 0 to avoid latching onto a stray two-line snippet.
+ * @param {string} text
+ * @returns {number}
+ */
+export function scoreChordText(text) {
+  return analyzeChordText(text).score;
+}
+
+/**
+ * The fraction of a block's non-blank lines that are actual chart lines (chords
+ * or section headers). 1.0 means a pure chart; lower means the block also wraps
+ * navigation, metadata, or lyrics-only text. Used to prefer the *tightest* block
+ * that still contains the whole chart over a parent that dilutes it with chrome.
+ * @param {{ chord: number, section: number, nonBlank: number }} a - analyzeChordText() result
+ * @returns {number} chart-line density in [0, 1]
+ */
+function chartDensity(a) {
+  return a.nonBlank ? (a.chord + a.section) / a.nonBlank : 0;
+}
+
+// A modest preference for <pre> elements. Chord charts are preformatted text, so
+// UG (and virtually every chord site) renders the bare chart in a <pre>; a parent
+// that re-wraps it with a tuning/key/metadata preamble is a <div>. Tag names are
+// stable (unlike UG's build-hashed class names), so this preference resolves the
+// common "<pre> core vs <div> superset" case without the brittleness detect.js
+// exists to avoid. If the chart is ever *not* in a <pre>, no candidate gets the
+// bonus and selection falls back to pure density.
+const PRE_BONUS = 1.3;
+
+/**
+ * Selection weight for a candidate: chart score scaled by chart density and a
+ * small <pre>-tag bonus. Density demotes a parent wrapper that inherits the
+ * chart's lines but dilutes them with nav/metadata (high score, low density) and
+ * starves stray fragments (high density, low score). The <pre> bonus then breaks
+ * the residual "core vs tuning-preamble superset" tie toward the tight chart.
+ * @param {{ tag?: string, text: string }} candidate
+ * @param {{ score: number, chord: number, section: number, nonBlank: number }} a - analyzeChordText() result
+ * @returns {number}
+ */
+function candidateWeight(candidate, a) {
+  const tagBonus = candidate.tag === 'pre' ? PRE_BONUS : 1;
+  return a.score * chartDensity(a) * tagBonus;
+}
+
+/**
+ * Choose the best candidate block by `candidateWeight` (density- and tag-aware),
+ * breaking ties toward the shorter block. The returned `score` is the raw score
+ * so callers can still threshold on absolute substance.
  * @param {Array<{ text: string, [k: string]: unknown }>} candidates
  * @returns {({ text: string, score: number, [k: string]: unknown })|null}
  */
 export function pickBestCandidate(candidates) {
   let best = null;
   for (const candidate of candidates) {
-    const score = scoreChordText(candidate.text);
-    if (score <= 0) continue;
+    const a = analyzeChordText(candidate.text);
+    if (a.score <= 0) continue;
+    const weighted = candidateWeight(candidate, a);
+    const scored = { ...candidate, score: a.score, weighted };
     const better =
       !best ||
-      score > best.score ||
-      (score === best.score && candidate.text.length < best.text.length);
-    if (better) best = { ...candidate, score };
+      weighted > best.weighted ||
+      (weighted === best.weighted && candidate.text.length < best.text.length);
+    if (better) best = scored;
   }
   return best;
 }
