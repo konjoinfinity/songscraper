@@ -21,17 +21,42 @@ Google with a stored OAuth refresh token (zero human interaction per run). Trigg
 ```
 src/
   server.js        Express app + routes + API-key guard + URL validation
-  scraper.js       scrapeSong(url) -> { title, artist, rawText }   (headless Puppeteer)
+  scraper.js       scrapeSong(url) -> { title, artist, rawText } + extractChordText (strategy)
+  detect.js        heuristic chord-block detection (content-fingerprint scoring) — primary strategy
   formatter.js     Crown Jewels: builds the batchUpdate requests + unbold second pass
   google/
     auth.js        OAuth2 client, /auth + /oauth2callback, refresh-token load
     docs.js        copy template, batchUpdate, unbold second pass (all awaited)
-  config.js        env-driven: templateId, folderId, scopes, selectors, port
+  config.js        env-driven: templateId, folderId, scopes, selectors, strategy, port
   constants.js     sectionTitles[], titles regex, chords regex
 test/
+  detect.test.js           heuristic scoring unit tests
+  scraper-strategy.test.js extractChordText strategy wiring (fake page, no browser)
   formatter.test.js        regression: refactored payload === legacy payload
   formatter.fixture.json   captured legacy batchUpdate payload (golden)
 ```
+
+## How extraction works
+
+The chord chart is located **heuristically by default** — `src/detect.js` scores candidate text
+blocks by their content fingerprint (chord density, section headers, chord-alignment whitespace) and
+picks the best one. This makes the scrape resilient to Ultimate Guitar's recurring DOM/class-name
+changes, the failure mode that breaks selector-based scraping. The exact CSS selector
+(`selectors.chordBlock` in `src/config.js`) is kept as a **fallback** (still fast and unambiguous when
+it works, and worth re-pinning when convenient).
+
+The strategy is env-switchable via `SCRAPE_STRATEGY` — the escape hatch if the heuristic ever
+misbehaves in production (flip the env var, no code change):
+
+| `SCRAPE_STRATEGY` | Behavior |
+|---|---|
+| `heuristic` (default) | heuristic first; fall back to the selector if nothing clears `DETECT_MIN_SCORE` |
+| `auto` | selector first; fall back to the heuristic if the selector is empty |
+| `selector` | selector only (exact legacy behavior) |
+
+`DETECT_MIN_SCORE` (default `5`) is the minimum chord-chart score the heuristic must clear to be
+trusted — a weak best-candidate is rejected rather than scraping the wrong element. Title/artist also
+fall back to parsing `document.title` when their selectors fail.
 
 ## Endpoints
 

@@ -4,6 +4,7 @@
 
 import puppeteer from 'puppeteer';
 import { config, selectors } from './config.js';
+import { detectChordBlock, parseTitleFromDocTitle } from './detect.js';
 
 /**
  * Read every match of `selector` and return the concatenated textContent.
@@ -14,6 +15,29 @@ import { config, selectors } from './config.js';
 async function readJoined(page, selector) {
   const parts = await page.$$eval(selector, (els) => els.map((el) => el.textContent));
   return parts.join('');
+}
+
+/**
+ * Resolve the chord-chart text using the configured strategy.
+ * @param {import('puppeteer').Page} page
+ * @param {string} [strategy=config.scrapeStrategy]
+ * @param {number} [minScore=config.detectMinScore]
+ * @returns {Promise<string>} the raw chart text, or '' if all paths fail
+ */
+export async function extractChordText(
+  page,
+  strategy = config.scrapeStrategy,
+  minScore = config.detectMinScore
+) {
+  /** @returns {Promise<string>} the selector-sourced chord text, trimmed */
+  const viaSelector = async () => (await readJoined(page, selectors.chordBlock)).trim();
+  /** @returns {Promise<string>} the heuristic-detected chord text, trimmed ('' if none) */
+  const viaHeuristic = async () => ((await detectChordBlock(page, minScore)) ?? '').trim();
+
+  if (strategy === 'selector') return viaSelector();
+  if (strategy === 'auto') return (await viaSelector()) || viaHeuristic();
+  // 'heuristic' (default)
+  return (await viaHeuristic()) || viaSelector();
 }
 
 /**
@@ -35,22 +59,27 @@ export async function scrapeSong(url) {
     page.setDefaultTimeout(config.scrapeTimeoutMs);
     await page.setViewport({ width: 1350, height: 850 });
 
-    await page.goto(url, { waitUntil: 'domcontentloaded' });
-    // Wait for the chart to render instead of guessing with a timer.
-    await page.waitForSelector(selectors.ready);
+    await page.goto(url, { waitUntil: 'networkidle2' });
+    // Best-effort: wait on the known render signal, but don't fail if it has rotted.
+    await page.waitForSelector(selectors.ready).catch(() => null);
 
-    const rawText = await readJoined(page, selectors.chordBlock);
+    const rawText = await extractChordText(page);
     const rawTitle = await readJoined(page, selectors.title);
     const rawArtist = await readJoined(page, selectors.artist);
 
     // Legacy cleaning: strip " Chords" from the title and "Edit" from the artist.
-    const title = rawTitle.replace(' Chords', '');
-    const artist = rawArtist.replace('Edit', '');
+    let title = rawTitle.replace(' Chords', '');
+    let artist = rawArtist.replace('Edit', '');
+    if (!title || !artist) {
+      const fromDoc = parseTitleFromDocTitle(await page.title());
+      if (fromDoc) ({ title, artist } = fromDoc);
+    }
 
     if (!rawText) {
       throw new Error(
-        'Scrape returned an empty chord block — the Ultimate Guitar selectors may have changed. ' +
-          'Re-pin them in src/config.js (selectors).'
+        'Scrape returned an empty chord block — the heuristic found nothing above threshold and ' +
+          'the Ultimate Guitar selectors may have changed. Re-pin them in src/config.js (selectors), ' +
+          'lower DETECT_MIN_SCORE, or set SCRAPE_STRATEGY=selector/auto.'
       );
     }
 
