@@ -148,11 +148,28 @@ export async function resolveRemoteEndpoint() {
 }
 
 /**
+ * Build the `puppeteer.launch` options for a fetch strategy. Pure (no I/O) so it
+ * can be asserted in tests. `headless` follows config (real/headed only on the
+ * self-hosted PUPPETEER_HEADLESS=false path); `args` adds the proxy server when
+ * the proxy strategy is configured.
+ * @param {string} [strategy=config.fetchStrategy]
+ * @returns {{ headless: boolean, args: string[], executablePath: (string|undefined) }}
+ */
+export function launchOptions(strategy = config.fetchStrategy) {
+  return {
+    headless: config.puppeteer.headless,
+    args: [...config.puppeteer.args, ...launchArgs(strategy)],
+    executablePath: config.puppeteer.executablePath,
+  };
+}
+
+/**
  * Acquire a Puppeteer browser for the configured fetch strategy. For `remote`,
  * connect to a managed real browser; otherwise launch a local/container Chromium
- * with the headless container-safe flags. The caller (scrapeSong) owns the
- * lifecycle and closes it deterministically — `browser.close()` works for both a
- * launched and a connected browser (and ends the remote session).
+ * (headless by default, or a real headed browser when PUPPETEER_HEADLESS=false on
+ * a self-hosted residential host). The caller (scrapeSong) owns the lifecycle and
+ * closes it deterministically — `browser.close()` works for both a launched and a
+ * connected browser (and ends the remote session).
  * @param {string} [strategy=config.fetchStrategy]
  * @returns {Promise<import('puppeteer').Browser>}
  */
@@ -161,11 +178,7 @@ export async function createBrowserSession(strategy = config.fetchStrategy) {
     const browserWSEndpoint = await resolveRemoteEndpoint();
     return puppeteer.connect({ browserWSEndpoint });
   }
-  return puppeteer.launch({
-    headless: config.puppeteer.headless,
-    args: [...config.puppeteer.args, ...launchArgs(strategy)],
-    executablePath: config.puppeteer.executablePath,
-  });
+  return puppeteer.launch(launchOptions(strategy));
 }
 
 /**
@@ -215,11 +228,11 @@ export async function loadChartPage(browser, url, strategy = config.fetchStrateg
   }
 
   await page.goto(url, { waitUntil: 'networkidle2' });
-  if (strategy === 'proxy' || strategy === 'remote') {
-    // The provider's browser usually clears Cloudflare itself, but wait out any
-    // residual interstitial before reading the chart.
-    await waitForChallengeToClear(page);
-  }
+  // Wait out any Cloudflare interstitial before reading the chart. A real headed
+  // browser (proxy/remote, or the self-hosted PUPPETEER_HEADLESS=false path on a
+  // residential IP) solves the JS challenge within a few seconds; this resolves
+  // immediately when there is no challenge, so it is harmless on a clean load.
+  await waitForChallengeToClear(page);
   // Best-effort: wait on the known render signal, but don't fail if it has rotted.
   await page.waitForSelector(selectors.ready).catch(() => null);
   return page;

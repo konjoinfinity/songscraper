@@ -76,7 +76,7 @@ need a *residential IP* — the `remote` providers below bundle both.
 
 | `FETCH_STRATEGY` | Behavior | Use |
 |---|---|---|
-| `direct` (default) | Puppeteer navigates UG directly | local dev only — blocked on Cloud Run |
+| `direct` (default) | Puppeteer navigates UG directly, then waits out any interstitial | local dev; **also the free self-hosted path** — works on a residential host with a real (headed) browser (`PUPPETEER_HEADLESS=false`); blocked on Cloud Run's datacenter IP |
 | `proxy` | Puppeteer navigates through a residential/mobile proxy, then waits out the interstitial | cheaper, more tuning; set `PROXY_SERVER`/`PROXY_USERNAME`/`PROXY_PASSWORD` |
 | `unlocker` | a web-unlocker API returns rendered HTML (solves Cloudflare + TLS fingerprint + proxies) loaded via `setContent` | set `UNLOCKER_API_URL`/`UNLOCKER_API_KEY` |
 | `remote` | `puppeteer.connect`s to a **real browser** on a managed provider (Browserless / Browserbase) with stealth + residential IPs built in | **recommended** for Cloud Run — closest to "a real browser window", highest Cloudflare pass rate |
@@ -101,6 +101,14 @@ Two ways to point at a managed browser (resolved by `resolveRemoteEndpoint`):
   finishes (`browser.close()`), which also stops proxy billing.
 
 `REMOTE_BROWSER_WS_ENDPOINT` wins if both are configured.
+
+### Free, self-hosted: a Raspberry Pi at home (`direct` + a real browser)
+
+The zero-cost option. A Pi on your home network already has the two things Cloudflare wants — a
+**residential IP** and somewhere to run a **real browser** — so `FETCH_STRATEGY=direct` works with no
+paid provider. Set `PUPPETEER_HEADLESS=false` and run the headed Chrome under a virtual display
+(Xvfb), since the Pi is monitor-less. The default stays headless, so Cloud Run is untouched. Full
+walkthrough (install, `systemd`, phone trigger): **[docs/RASPBERRY_PI.md](docs/RASPBERRY_PI.md)**.
 
 ## Endpoints
 
