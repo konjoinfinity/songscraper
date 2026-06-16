@@ -17,6 +17,26 @@ phone-triggerable without any other computer running.
 
 ---
 
+## Quick path: the setup script
+
+If you'd rather not run the steps below by hand, a bootstrap script does steps 1–5 for you — install
+packages, install deps, write a `.env` with a generated API key + the Pi browser settings, and
+(optionally) install the always-on service. Run it **on the Pi**, from the repo root:
+
+```bash
+git clone https://github.com/konjoinfinity/songscraper.git && cd songscraper
+bash scripts/setup-pi.sh            # install + configure
+# or, to also install the always-on systemd service:
+bash scripts/setup-pi.sh --systemd
+```
+
+It's idempotent (safe to re-run) and never overwrites an existing `.env`. It does **not** touch your
+Google credentials — it prints the two remaining manual steps (fill in `GOOGLE_CLIENT_ID` /
+`GOOGLE_CLIENT_SECRET`, then mint the refresh token via `/auth`) when it finishes. The rest of this
+doc is the same process done manually, plus reference detail.
+
+---
+
 ## 0. What you need
 
 - A Raspberry Pi (Pi 4 / Pi 5 with 2 GB+ RAM recommended — Chrome is memory-hungry) running a recent

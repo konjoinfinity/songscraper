@@ -15,7 +15,8 @@
     "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\"",
     "format:check": "prettier --check \"src/**/*.js\" \"test/**/*.js\"",
     "fixture": "node scripts/capture-legacy-fixture.js",
-    "validate": "node scripts/validate-scrape.js"
+    "validate": "node scripts/validate-scrape.js",
+    "setup:pi": "bash scripts/setup-pi.sh"
   },
   "keywords": [
     "ultimate-guitar",
