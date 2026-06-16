@@ -169,15 +169,37 @@ The service now listens on the Pi's port 8080. How your phone reaches it depends
 - **On your home Wi-Fi (simplest):** point the iOS Shortcut (`docs/MOBILE.md`) at the Pi's LAN address,
   e.g. `http://192.168.1.50:8080/scrape`. Give the Pi a static/reserved IP in your router so it
   doesn't change.
-- **From anywhere (recommended): [Tailscale](https://tailscale.com).** Install it on the Pi and your
-  phone (both free); the phone then reaches the Pi at its private Tailscale IP from any network, with
-  no port-forwarding and nothing exposed to the public internet.
+- **From anywhere (recommended): [Tailscale](https://tailscale.com).** A private WireGuard network
+  between the Pi and your phone — reachable from any network, no port-forwarding, nothing exposed to
+  the public internet. Setup below.
 - **From anywhere, public URL: a [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)**
   (or similar) gives the Pi an HTTPS URL without opening router ports. Only do this with the `x-api-key`
-  guard on (it is) — the endpoint is then internet-reachable.
+  guard on (it is) — the endpoint is then internet-reachable; consider an identity layer (Cloudflare
+  Access) in front.
 
 > Whichever you pick, the `x-api-key` shared secret + UG-URL validation remain the auth boundary —
-> never run the service without `API_KEY` set.
+> never run the service without `API_KEY` set. Over Tailscale, plain `http` is fine — the transport is
+> already encrypted by WireGuard.
+
+### Tailscale, step by step (the recommended path)
+
+```bash
+# On the Pi
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo systemctl enable --now tailscaled        # ensure the daemon is running
+sudo tailscale up --hostname=songscraper      # prints a login URL — open it, approve the machine
+tailscale status                              # shows the Pi's MagicDNS name + 100.x.y.z IP
+```
+
+Then on the **iPhone**: install **Tailscale** from the App Store, sign in with the **same account**,
+and toggle the VPN **on**. Point the Shortcut at the Pi's MagicDNS name:
+
+```
+http://songscraper.tailXXXXXX.ts.net:8080/scrape      # the 100.x.y.z Tailscale IP works too
+```
+
+`tailscaled` is enabled, and the Pi stays authenticated across reboots, so it re-joins the tailnet
+automatically — no re-auth needed. Full Shortcut build: **[MOBILE.md](MOBILE.md)**.
 
 ---
 
@@ -192,6 +214,9 @@ The service now listens on the Pi's port 8080. How your phone reaches it depends
   `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser`.
 - **Out of memory / Chrome crashes on a Pi with little RAM.** Close other services, or add swap. The
   container-safe flags (`--disable-dev-shm-usage` etc.) are already applied.
+- **Port 8080 already in use (e.g. on an Umbrel home server).** Another service may own `8080`
+  (`sudo ss -ltnp | grep :8080` to see what). Set `PORT=8090` (or any free port) in `.env`,
+  `sudo systemctl restart songscraper`, and use that port in the scrape URL and the iOS Shortcut.
 - **Cloudflare hardens and even the headed browser is challenged.** As a next step you can add a
   stealth layer (e.g. `puppeteer-extra` + the stealth plugin) — this is intentionally not a dependency
   today to keep the tree lean. Open an issue if you hit this.
