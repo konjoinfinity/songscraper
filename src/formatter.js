@@ -1,166 +1,102 @@
-// Crown Jewels — builds the Google Docs `batchUpdate` payload from scraped song
-// data. Behavior is preserved exactly from the legacy pageScraper.js; the
-// regression test (test/formatter.test.js vs test/formatter.fixture.json)
-// guards it. Do not change the index math, the regexes, or the placeholders.
+// Builds the Google Docs `batchUpdate` payload from scraped song data, in two
+// passes over a section-aware Layout (see layout.js):
+//
+//   Pass 1 (buildReplaceRequests): replace the title + both column placeholders
+//     ("col1"/"col2") with the rendered column text. Pure string assembly — no
+//     index math, so the duplicate-column bug class is structurally impossible.
+//   Pass 2 (buildStyleRequests): after the doc is updated and re-read, bold each
+//     paragraph by its rendered kind (chord/section bold, lyric not), taking the
+//     start/end indices straight from the document — never computed by hand.
+//
+// Bold is decided per-line from the Layout, deterministically; there is no shared
+// global regex state between lines (the source of the old alternating-bold bug).
 
-import {
-  SECTION_TITLES,
-  TITLES_SOURCE,
-  TITLES_FLAGS,
-  CHORDS_SOURCE,
-  CHORDS_FLAGS,
-  TITLE_PLACEHOLDER,
-  COL2_PLACEHOLDER,
-} from './constants.js';
+import { buildLayout } from './layout.js';
+import { config } from './config.js';
+import { TITLE_PLACEHOLDER, COL1_PLACEHOLDER, COL2_PLACEHOLDER } from './constants.js';
 
 /**
- * Strip the [Section] brackets, leaving the bare section name. The legacy
- * iteration order matters (e.g. "Chorus" is processed before "Chorus 1").
- * @param {string} text - the raw chart text
- * @returns {string} the chart with section brackets removed
+ * Serialize a column's rendered sections into a single cell string plus the flat
+ * list of lines that produced it (one blank-line separator between sections). The
+ * text and the lines array stay 1:1 — `text.split('\n')` has `lines.length`
+ * entries — so pass 2 can style paragraph i from line i.
+ * @param {import('./layout.js').RenderedSection[]} sections
+ * @returns {{ text: string, lines: import('./layout.js').RenderedLine[] }}
  */
-function stripBrackets(text) {
-  let first = text;
-  for (const title of SECTION_TITLES) {
-    first = first.replaceAll(`[${title}]`, `${title}`);
-  }
-  return first;
+function serializeColumn(sections) {
+  const lines = [];
+  sections.forEach((sec, i) => {
+    if (i > 0) lines.push({ kind: 'blank', text: '' });
+    lines.push(...sec.renderLines);
+  });
+  return { text: lines.map((line) => line.text).join('\n'), lines };
 }
 
 /**
- * Find the first line (within the first 25) that is exactly a section title —
- * the real start of the chart.
- * @param {string[]} chartArr - the chart split into lines
- * @returns {number|undefined} the line index, or undefined if none found
+ * Emit one bold updateTextStyle per cell paragraph, matched to the rendered lines
+ * by order. Indices come from the re-read document (never computed); zero-length
+ * (empty trailing) paragraphs are skipped.
+ * @param {object[]|null} cellContent - the cell's content array from documents.get
+ * @param {import('./layout.js').RenderedLine[]} renderLines - the lines written to that cell
+ * @returns {object[]} updateTextStyle requests
  */
-function findFirstSectionIndex(chartArr) {
-  for (let i = 0; i < 25; i++) {
-    const line = chartArr[i];
-    // Operands are strings, so the legacy loose comparison equals strict.
-    if (line && SECTION_TITLES.some((v) => line.trim() === v)) {
-      return i;
-    }
+function styleCellByOrder(cellContent, renderLines) {
+  if (!cellContent) return [];
+  const requests = [];
+  const count = Math.min(cellContent.length, renderLines.length);
+  for (let i = 0; i < count; i++) {
+    const element = cellContent[i].paragraph?.elements?.[0];
+    if (!element) continue;
+    const { startIndex, endIndex } = element;
+    if (startIndex == null || endIndex == null || startIndex >= endIndex) continue;
+    const bold = renderLines[i].kind !== 'lyric';
+    requests.push({
+      updateTextStyle: { range: { startIndex, endIndex }, textStyle: { bold }, fields: 'bold' },
+    });
   }
-  return undefined;
+  return requests;
 }
 
 /**
- * Find the row (scanning 49→35) at which column 1 ends and column 2 begins —
- * the first blank-ish line (a single space) in that window.
- * @param {string[]} chartArr - the chart split into lines
- * @returns {number|undefined} the split index, or undefined if none found
- */
-function findSplitIndex(chartArr) {
-  const newArr = chartArr.slice(0, 52);
-  for (let j = 49; j > 34; j--) {
-    if (newArr[j] === ' ') {
-      return j;
-    }
-  }
-  return undefined;
-}
-
-/**
- * A single-use formatter. The `titles`/`chords` regexes are created once and
- * shared between buildBatchRequests (pass 1) and buildUnboldRequests (pass 2),
- * preserving the legacy stateful-`.test()` carryover across both passes.
- * Call buildBatchRequests first, then buildUnboldRequests once.
+ * A single-use formatter bound to one scraped chart. `buildReplaceRequests` runs
+ * first (pass 1); after the doc is updated and both cells are re-read,
+ * `buildStyleRequests` runs once (pass 2).
  * @param {{ rawText: string, title: string }} song - scraped chart + doc title
- * @returns {{ buildBatchRequests: () => object[], buildUnboldRequests: (cellContent: object[]) => object[] }}
+ * @returns {{ buildReplaceRequests: () => object[], buildStyleRequests: (col1Content: object[]|null, col2Content: object[]|null) => object[] }}
  */
 export function createFormatter({ rawText, title }) {
-  const titles = new RegExp(TITLES_SOURCE, TITLES_FLAGS);
-  const chords = new RegExp(CHORDS_SOURCE, CHORDS_FLAGS);
+  const layout = buildLayout(rawText, config.format);
+  const col1 = serializeColumn(layout.col1);
+  // Overflow sections (beyond one page) append to column two, flowing whole onto
+  // page 2 — never split across the boundary.
+  const col2 = serializeColumn([...layout.col2, ...layout.overflow]);
 
   /**
-   * Pass 1: build the requests that fill column 1 (inserted text at indices with
-   * bold/unbold guesses), replace the column-2 placeholder, and set the title.
-   * @returns {object[]} the filtered batchUpdate requests
+   * Pass 1: replace the title and both column placeholders. No index math.
+   * @returns {object[]}
    */
-  function buildBatchRequests() {
-    const first = stripBrackets(rawText);
-    const lines = first.split(/\r\n|\r|\n/);
-    const newFirstIndex = findFirstSectionIndex(lines);
-    const indexToSplit = findSplitIndex(lines);
+  function buildReplaceRequests() {
+    return [
+      [title, TITLE_PLACEHOLDER],
+      [col1.text, COL1_PLACEHOLDER],
+      [col2.text, COL2_PLACEHOLDER],
+    ].map(([replaceText, placeholder]) => ({
+      replaceAllText: { replaceText, containsText: { text: placeholder, matchCase: true } },
+    }));
+  }
 
-    let indexCount = 4;
-    const requests = [
-      {
-        replaceAllText: {
-          replaceText: title,
-          containsText: { text: TITLE_PLACEHOLDER, matchCase: true },
-        },
-      },
+  /**
+   * Pass 2: bold each paragraph in both cells by its rendered kind.
+   * @param {object[]|null} col1Content - left cell content from documents.get
+   * @param {object[]|null} col2Content - right cell content from documents.get
+   * @returns {object[]}
+   */
+  function buildStyleRequests(col1Content, col2Content) {
+    return [
+      ...styleCellByOrder(col1Content, col1.lines),
+      ...styleCellByOrder(col2Content, col2.lines),
     ];
-
-    let newFirst = first.split(/\n/);
-    newFirst = newFirst.splice(newFirstIndex);
-    newFirst.forEach((line, index) => {
-      // Both tests run every iteration (even skipped lines) to advance regex
-      // state, exactly as the legacy code did.
-      const isTitles = titles.test(line);
-      const isChords = chords.test(line.trim());
-      if (Number(index) <= Number(indexToSplit)) {
-        const bold = isTitles || isChords;
-        requests.push({ insertText: { text: line, location: { index: indexCount + 1 } } });
-        requests.push({
-          updateTextStyle: {
-            range: { startIndex: indexCount + 1, endIndex: indexCount + line.length },
-            textStyle: { bold },
-            fields: 'bold',
-          },
-        });
-        indexCount = indexCount + line.length;
-      }
-    });
-
-    const chartArr = first.split(/\n/);
-    const colChart2 = chartArr.slice(indexToSplit + 1, chartArr.length);
-    const toWrite = colChart2.join('\r\n');
-    requests.push({
-      replaceAllText: {
-        replaceText: toWrite,
-        containsText: { text: COL2_PLACEHOLDER, matchCase: true },
-      },
-    });
-
-    // Drop updateTextStyle requests with an empty range (start === end).
-    return requests.filter(
-      (req) =>
-        !(
-          req.updateTextStyle &&
-          req.updateTextStyle.range.startIndex === req.updateTextStyle.range.endIndex
-        )
-    );
   }
 
-  /**
-   * Pass 2: re-read the column-2 table cell content and unbold the lyric lines
-   * (lines that are neither section titles nor chords).
-   * @param {object[]} cellContent - body.content[2].table.tableRows[0].tableCells[1].content
-   * @returns {object[]} the unbold updateTextStyle requests
-   */
-  function buildUnboldRequests(cellContent) {
-    const unboldRequests = [];
-    cellContent.forEach((line) => {
-      const text = line.paragraph.elements[0].textRun.content;
-      const isTitles = titles.test(text);
-      const isChords = chords.test(text.trim());
-      if (!isTitles && !isChords) {
-        unboldRequests.push({
-          updateTextStyle: {
-            range: {
-              startIndex: line.paragraph.elements[0].startIndex,
-              endIndex: line.paragraph.elements[0].endIndex,
-            },
-            textStyle: { bold: false },
-            fields: 'bold',
-          },
-        });
-      }
-    });
-    return unboldRequests;
-  }
-
-  return { buildBatchRequests, buildUnboldRequests };
+  return { buildReplaceRequests, buildStyleRequests };
 }

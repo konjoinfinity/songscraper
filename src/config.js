@@ -12,6 +12,7 @@ const {
   DRIVE_FOLDER_ID,
   PUPPETEER_EXECUTABLE_PATH,
   PUPPETEER_HEADLESS,
+  FORMAT_COLUMN_LINE_BUDGET,
   SCRAPE_STRATEGY,
   DETECT_MIN_SCORE,
   FETCH_STRATEGY,
@@ -66,6 +67,14 @@ export const config = {
 
   // How long to wait for navigation/selectors before giving up (ms).
   scrapeTimeoutMs: 45_000,
+
+  // Layout tuning for the section-aware formatter (src/layout.js). The column line
+  // budget is how many rendered lines fit in one table cell before content flows to
+  // the next column / page; two columns ≈ one page. It's a heuristic (Google Docs
+  // decides real wrapping at render time from cell width/font), so it's tunable.
+  format: {
+    columnLineBudget: Number(FORMAT_COLUMN_LINE_BUDGET) || 40,
+  },
 
   // Extraction strategy: 'heuristic' (default, content-based, resilient to DOM
   // changes), 'auto' (selector first, heuristic fallback), or 'selector' (legacy).
