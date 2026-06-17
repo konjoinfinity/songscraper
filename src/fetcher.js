@@ -198,7 +198,7 @@ export async function createBrowserSession(strategy = config.fetchStrategy) {
  * @returns {Promise<import('puppeteer').Browser>}
  */
 export async function getBrowser(launch = () => puppeteer.launch(launchOptions())) {
-  if (sharedBrowser && sharedBrowser.connected) {
+  if (sharedBrowser?.connected) {
     return sharedBrowser;
   }
   sharedBrowser = await launch();
@@ -215,7 +215,7 @@ export async function getBrowser(launch = () => puppeteer.launch(launchOptions()
 export async function closeSharedBrowser() {
   const browser = sharedBrowser;
   sharedBrowser = null;
-  if (browser && browser.connected) {
+  if (browser?.connected) {
     await browser.close().catch(() => null);
   }
 }

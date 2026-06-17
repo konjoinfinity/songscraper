@@ -25,17 +25,17 @@ describe('getAuthorizedClient — memoization', () => {
   it('returns the same client instance across calls (token reuse)', async () => {
     const { getAuthorizedClient, resetAuthorizedClient } = await import('../src/google/auth.js');
     resetAuthorizedClient();
-    const a = getAuthorizedClient();
-    const b = getAuthorizedClient();
-    expect(a).toBe(b);
+    const first = getAuthorizedClient();
+    const second = getAuthorizedClient();
+    expect(first).toBe(second);
   });
 
   it('rebuilds the client after resetAuthorizedClient (e.g. token rotation)', async () => {
     const { getAuthorizedClient, resetAuthorizedClient } = await import('../src/google/auth.js');
     resetAuthorizedClient();
-    const a = getAuthorizedClient();
+    const first = getAuthorizedClient();
     resetAuthorizedClient();
-    const b = getAuthorizedClient();
-    expect(a).not.toBe(b);
+    const second = getAuthorizedClient();
+    expect(first).not.toBe(second);
   });
 });

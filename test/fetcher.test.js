@@ -134,10 +134,10 @@ describe('getBrowser — warm reuse', () => {
       launches += 1;
       return Promise.resolve(fake);
     };
-    const a = await getBrowser(launch);
-    const b = await getBrowser(launch);
-    expect(a).toBe(fake);
-    expect(b).toBe(fake);
+    const first = await getBrowser(launch);
+    const second = await getBrowser(launch);
+    expect(first).toBe(fake);
+    expect(second).toBe(fake);
     expect(launches).toBe(1);
   });
 
@@ -211,7 +211,9 @@ describe('openChart — context lifecycle', () => {
   });
 
   it('remote: surfaces a clear error when no remote browser is configured', async () => {
-    await expect(openChart('https://ug/x', 'remote')).rejects.toThrow(/no remote browser is configured/);
+    await expect(openChart('https://ug/x', 'remote')).rejects.toThrow(
+      /no remote browser is configured/
+    );
   });
 });
 
