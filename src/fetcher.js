@@ -22,6 +22,14 @@
 import puppeteer from 'puppeteer';
 import { config, selectors } from './config.js';
 
+// A single long-lived browser process, reused across scrapes so the ~3.5s Chrome
+// launch is paid once (at startup) rather than on every request. Each scrape gets
+// a *fresh, isolated* BrowserContext (see openChart) — never a shared cookie jar:
+// persisting Cloudflare cookies across visits provokes a hard challenge that never
+// clears (measured: 75s timeout vs ~12s with fresh contexts). null when no browser
+// is alive; relaunched lazily on next use.
+let sharedBrowser = null;
+
 // Markers of a Cloudflare (or similar) bot-check interstitial, matched against
 // the page title and/or a snippet of the HTML. Kept deliberately broad.
 const CHALLENGE_MARKERS = [
@@ -182,6 +190,70 @@ export async function createBrowserSession(strategy = config.fetchStrategy) {
 }
 
 /**
+ * Return the shared, warm browser process, launching it on first use and after a
+ * crash. Only for *local* launches (direct/proxy/unlocker) — the `remote` strategy
+ * is per-scrape (managed sessions, esp. Browserbase) and is handled in openChart.
+ * The `disconnected` listener drops the cached handle so the next call relaunches.
+ * @param {() => Promise<import('puppeteer').Browser>} [launch] - injectable launcher (tests)
+ * @returns {Promise<import('puppeteer').Browser>}
+ */
+export async function getBrowser(launch = () => puppeteer.launch(launchOptions())) {
+  if (sharedBrowser && sharedBrowser.connected) {
+    return sharedBrowser;
+  }
+  sharedBrowser = await launch();
+  sharedBrowser.once('disconnected', () => {
+    sharedBrowser = null;
+  });
+  return sharedBrowser;
+}
+
+/**
+ * Close and forget the shared browser. Call on shutdown; also a test seam.
+ * @returns {Promise<void>}
+ */
+export async function closeSharedBrowser() {
+  const browser = sharedBrowser;
+  sharedBrowser = null;
+  if (browser && browser.connected) {
+    await browser.close().catch(() => null);
+  }
+}
+
+/**
+ * Acquire a loaded chart page plus a `release` to free its resources. For local
+ * strategies this reuses the warm browser and isolates the scrape in a throwaway
+ * BrowserContext (fresh cookies → no Cloudflare cross-visit penalty); release()
+ * closes only that context, leaving the browser warm. For `remote`, a fresh
+ * connection is made per scrape and release() closes it (ending the session).
+ * @param {string} url - a validated ultimate-guitar.com chart URL
+ * @param {string} [strategy=config.fetchStrategy]
+ * @returns {Promise<{ page: import('puppeteer').Page, release: () => Promise<void> }>}
+ */
+export async function openChart(url, strategy = config.fetchStrategy) {
+  if (strategy === 'remote') {
+    const browser = await createBrowserSession(strategy);
+    try {
+      const page = await loadChartPage(browser, url, strategy);
+      return { page, release: () => browser.close().catch(() => null) };
+    } catch (err) {
+      await browser.close().catch(() => null);
+      throw err;
+    }
+  }
+
+  const browser = await getBrowser();
+  const context = await browser.createBrowserContext();
+  try {
+    const page = await loadChartPage(context, url, strategy);
+    return { page, release: () => context.close().catch(() => null) };
+  } catch (err) {
+    await context.close().catch(() => null);
+    throw err;
+  }
+}
+
+/**
  * Wait (bounded, condition-based — no timers) for a Cloudflare interstitial to
  * resolve to the real page. Resolves as soon as the title no longer matches a
  * challenge marker; gives up quietly on timeout so the caller's challenge guard
@@ -203,7 +275,7 @@ async function waitForChallengeToClear(page) {
  * Open `url` and return a Puppeteer page holding the chart's DOM, using the
  * configured fetch strategy. The browser is owned by the caller (scrapeSong),
  * which closes it deterministically; this only creates and loads the page.
- * @param {import('puppeteer').Browser} browser
+ * @param {import('puppeteer').Browser|import('puppeteer').BrowserContext} browser - anything with newPage()
  * @param {string} url - a validated ultimate-guitar.com chart URL
  * @param {string} [strategy=config.fetchStrategy]
  * @returns {Promise<import('puppeteer').Page>}
@@ -227,7 +299,13 @@ export async function loadChartPage(browser, url, strategy = config.fetchStrateg
     });
   }
 
-  await page.goto(url, { waitUntil: 'networkidle2' });
+  // `domcontentloaded` (not `networkidle2`): UG is ad/tracker-heavy, so waiting
+  // for the network to fall idle adds ~5s of pure waste — the chart <pre> and the
+  // Cloudflare challenge both settle long before the ad sockets go quiet. We gate
+  // explicitly below on the challenge-clear and the `pre` render signal instead,
+  // which is both faster and a more honest readiness check. (Measured on a Pi 4:
+  // ~21s networkidle2 nav vs ~12-15s domcontentloaded + these waits.)
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
   // Wait out any Cloudflare interstitial before reading the chart. A real headed
   // browser (proxy/remote, or the self-hosted PUPPETEER_HEADLESS=false path on a
   // residential IP) solves the JS challenge within a few seconds; this resolves
