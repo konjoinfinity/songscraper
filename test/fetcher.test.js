@@ -6,6 +6,9 @@ import {
   fetchViaUnlocker,
   loadChartPage,
   resolveRemoteEndpoint,
+  getBrowser,
+  openChart,
+  closeSharedBrowser,
 } from '../src/fetcher.js';
 
 const CHART_HTML =
@@ -116,6 +119,101 @@ describe('loadChartPage — strategy wiring (no env)', () => {
     await loadChartPage(makeFakeBrowser(page), 'https://ug/x', 'proxy');
     expect(page._calls.goto).toHaveLength(1);
     expect(page._calls.waitForFunction).toBe(1); // the challenge-clear wait
+  });
+});
+
+describe('getBrowser — warm reuse', () => {
+  afterEach(async () => {
+    await closeSharedBrowser();
+  });
+
+  it('launches once and reuses the same browser while connected', async () => {
+    let launches = 0;
+    const fake = { connected: true, once: () => undefined, close: () => Promise.resolve() };
+    const launch = () => {
+      launches += 1;
+      return Promise.resolve(fake);
+    };
+    const first = await getBrowser(launch);
+    const second = await getBrowser(launch);
+    expect(first).toBe(fake);
+    expect(second).toBe(fake);
+    expect(launches).toBe(1);
+  });
+
+  it('relaunches when the cached browser is no longer connected', async () => {
+    let launches = 0;
+    const dead = { connected: false, once: () => undefined, close: () => Promise.resolve() };
+    const live = { connected: true, once: () => undefined, close: () => Promise.resolve() };
+    const launch = () => {
+      launches += 1;
+      return Promise.resolve(launches === 1 ? dead : live);
+    };
+    expect(await getBrowser(launch)).toBe(dead);
+    expect(await getBrowser(launch)).toBe(live);
+    expect(launches).toBe(2);
+  });
+
+  it('drops the handle when the disconnected event fires', async () => {
+    let launches = 0;
+    let onDisconnect = null;
+    const first = {
+      connected: true,
+      once: (ev, fn) => {
+        if (ev === 'disconnected') onDisconnect = fn;
+      },
+      close: () => Promise.resolve(),
+    };
+    const second = { connected: true, once: () => undefined, close: () => Promise.resolve() };
+    const launch = () => {
+      launches += 1;
+      return Promise.resolve(launches === 1 ? first : second);
+    };
+    await getBrowser(launch);
+    onDisconnect(); // simulate a crash
+    expect(await getBrowser(launch)).toBe(second);
+    expect(launches).toBe(2);
+  });
+});
+
+describe('openChart — context lifecycle', () => {
+  afterEach(async () => {
+    await closeSharedBrowser();
+  });
+
+  it('local: opens a fresh context, and release() closes the context but not the browser', async () => {
+    const page = makeFakePage();
+    let contextClosed = 0;
+    let browserClosed = 0;
+    const context = {
+      newPage: () => page,
+      close: () => {
+        contextClosed += 1;
+        return Promise.resolve();
+      },
+    };
+    const fakeBrowser = {
+      connected: true,
+      once: () => undefined,
+      createBrowserContext: () => Promise.resolve(context),
+      close: () => {
+        browserClosed += 1;
+        return Promise.resolve();
+      },
+    };
+    await getBrowser(() => Promise.resolve(fakeBrowser)); // seed the warm browser
+    const { page: got, release } = await openChart('https://ug/x', 'direct');
+    expect(got).toBe(page);
+    expect(page._calls.goto).toHaveLength(1);
+    await release();
+    expect(contextClosed).toBe(1);
+    expect(browserClosed).toBe(0); // browser stays warm across scrapes
+  });
+
+  it('remote: surfaces a clear error when no remote browser is configured', async () => {
+    await expect(openChart('https://ug/x', 'remote')).rejects.toThrow(
+      /no remote browser is configured/
+    );
   });
 });
 

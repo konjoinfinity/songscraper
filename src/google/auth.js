@@ -25,20 +25,40 @@ function makeOAuthClient() {
   );
 }
 
+// Memoized authorized client. The OAuth2 client caches its short-lived access
+// token and auto-refreshes when it expires, so reusing one instance across
+// requests avoids re-minting an access token on every scrape (one fewer Google
+// round trip per request). Reset via resetAuthorizedClient (test seam / rotation).
+let authorizedClient = null;
+
 /**
  * An authorized client for normal runs: loads the stored refresh token and lets
- * googleapis auto-refresh the access token. Throws clearly if no token is set.
+ * googleapis auto-refresh the access token. Memoized so the access token is reused
+ * across requests. Throws clearly if no token is set.
  * @returns {import('google-auth-library').OAuth2Client}
  */
 export function getAuthorizedClient() {
   assertConfig(['clientId', 'clientSecret', 'refreshToken']);
+  if (authorizedClient) {
+    return authorizedClient;
+  }
   const client = new google.auth.OAuth2(
     config.oauth.clientId,
     config.oauth.clientSecret,
     config.oauth.redirectUri
   );
   client.setCredentials({ refresh_token: config.oauth.refreshToken });
+  authorizedClient = client;
   return client;
+}
+
+/**
+ * Drop the memoized authorized client so the next call rebuilds it (e.g. after a
+ * refresh-token rotation, or to isolate tests).
+ * @returns {void}
+ */
+export function resetAuthorizedClient() {
+  authorizedClient = null;
 }
 
 /**

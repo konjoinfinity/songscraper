@@ -4,7 +4,7 @@
 
 import { config, selectors } from './config.js';
 import { detectChordBlock, parseTitleFromDocTitle } from './detect.js';
-import { createBrowserSession, loadChartPage, isChallengePage } from './fetcher.js';
+import { openChart, isChallengePage } from './fetcher.js';
 
 /**
  * Read every match of `selector` and return the concatenated textContent.
@@ -60,17 +60,12 @@ export async function extractChordText(
  * @returns {Promise<{ title: string, artist: string, rawText: string }>}
  */
 export async function scrapeSong(url) {
-  let browser = null;
+  // Acquire a loaded chart page plus its `release`. For local strategies this
+  // reuses the warm browser process and isolates the scrape in a throwaway
+  // BrowserContext; for `remote` it is a per-scrape connection. release() frees
+  // the right resource (context or connection) — see fetcher.openChart.
+  const { page, release } = await openChart(url);
   try {
-    // Acquire the browser for the configured fetch strategy: a local headless
-    // Chromium for direct/proxy/unlocker, or a connection to a managed real
-    // browser for `remote`. Either way scrapeSong owns and closes it below.
-    browser = await createBrowserSession();
-
-    // Acquire the chart page via the configured fetch strategy (direct/proxy/
-    // unlocker). loadChartPage handles navigation, proxy auth, and the ready wait.
-    const page = await loadChartPage(browser, url);
-
     // Fail fast with a clear, actionable message if we got an anti-bot wall
     // instead of the chart (the unlocker path is expected to have solved it).
     if (config.fetchStrategy !== 'unlocker' && isChallengePage(await page.title())) {
@@ -105,9 +100,7 @@ export async function scrapeSong(url) {
 
     return { title, artist, rawText };
   } finally {
-    if (browser) {
-      await browser.close();
-    }
+    await release();
   }
 }
 
