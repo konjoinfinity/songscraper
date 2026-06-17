@@ -56,15 +56,17 @@ describe('compactSection', () => {
 
 describe('sectionSignature', () => {
   it('matches two sections with the same body but different headings', () => {
-    const a = compactSection(parseSections(['[Chorus]', 'G  C', 'same words'].join('\n'))[0]);
-    const b = compactSection(parseSections(['[Chorus 2]', 'G  C', 'Same Words'].join('\n'))[0]);
-    expect(sectionSignature(a)).toBe(sectionSignature(b)); // lyric case-insensitive
+    const first = compactSection(parseSections(['[Chorus]', 'G  C', 'same words'].join('\n'))[0]);
+    const second = compactSection(
+      parseSections(['[Chorus 2]', 'G  C', 'Same Words'].join('\n'))[0]
+    );
+    expect(sectionSignature(first)).toBe(sectionSignature(second)); // lyric case-insensitive
   });
 
   it('differs when chord case differs (Em != EM)', () => {
-    const a = compactSection(parseSections(['[Intro]', 'Em  G'].join('\n'))[0]);
-    const b = compactSection(parseSections(['[Intro]', 'EM  G'].join('\n'))[0]);
-    expect(sectionSignature(a)).not.toBe(sectionSignature(b));
+    const first = compactSection(parseSections(['[Intro]', 'Em  G'].join('\n'))[0]);
+    const second = compactSection(parseSections(['[Intro]', 'EM  G'].join('\n'))[0]);
+    expect(sectionSignature(first)).not.toBe(sectionSignature(second));
   });
 });
 
