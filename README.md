@@ -18,6 +18,40 @@ Google with a stored OAuth refresh token (zero human interaction per run). Trigg
 
 ## Architecture
 
+A single `POST /scrape` drives the whole pipeline: a real browser clears Cloudflare, the chart is
+located heuristically, the Crown-Jewels formatter builds the Docs payload, and a Google Doc link comes
+back. The two deployment shapes differ only in **where the real browser runs** — a self-hosted Pi on a
+residential IP (free), or a managed remote browser from Cloud Run (paid).
+
+```mermaid
+flowchart LR
+    phone["📱 iPhone<br/>Shortcut / Share Sheet"]
+
+    subgraph pi["🥧 Raspberry Pi · home · residential IP"]
+        direction TB
+        ex["server.js<br/>x-api-key guard<br/>+ UG-URL validation"]
+        fe["fetcher.js<br/>headed Chrome under Xvfb"]
+        det["detect.js<br/>heuristic chord-block scoring"]
+        fmt["formatter.js<br/>Crown Jewels batchUpdate"]
+        ex --> fe --> det --> fmt
+    end
+
+    ug["🎸 Ultimate Guitar<br/>behind Cloudflare"]
+    g["📄 Google Docs + Drive API"]
+
+    phone -->|"POST /scrape { url }<br/>over Tailscale (WireGuard)"| ex
+    fe <-->|"real browser +<br/>residential IP clears the wall"| ug
+    fmt -->|"copy template → batchUpdate →<br/>unbold pass"| g
+    g -.->|"docUrl"| ex
+    ex -.->|"{ docUrl, title, artist }"| phone
+```
+
+> On Cloud Run the `fetcher.js` box instead `puppeteer.connect`s to a managed remote browser
+> (`FETCH_STRATEGY=remote`) — datacenter IPs are blocked, so the headed browser + residential egress
+> are rented. Everything downstream (detect → format → Docs) is identical.
+
+### Module layout
+
 ```
 src/
   server.js        Express app + routes + API-key guard + URL validation
@@ -164,6 +198,18 @@ CI/CD: PRs are gated by `.github/workflows/ci.yml` and merges to `main` auto-dep
 `POST /scrape` is all a phone needs. See **[docs/MOBILE.md](./docs/MOBILE.md)** for an **iOS Shortcut**
 that takes a shared Ultimate Guitar link from the Share Sheet, calls the service with the `x-api-key`,
 and opens the finished Google Doc.
+
+How the phone reaches the service depends on the deployment:
+
+| Deployment | Endpoint the Shortcut calls | Reachable from |
+|---|---|---|
+| **Pi + [Tailscale](https://tailscale.com)** (free, recommended) | `http://<pi-name>.<tailnet>.ts.net:8080/scrape` | anywhere (encrypted, nothing public) |
+| **Pi on home Wi-Fi** | `http://<pi-lan-ip>:8080/scrape` | home network only |
+| **Cloud Run** | `https://<cloud-run-url>/scrape` | anywhere (public HTTPS) |
+
+For the self-hosted path, Tailscale is the sweet spot: a private WireGuard link to the Pi from any
+network, no port-forwarding, nothing exposed to the public internet. Full walkthrough in
+**[docs/MOBILE.md](./docs/MOBILE.md)** and **[docs/RASPBERRY_PI.md](./docs/RASPBERRY_PI.md)**.
 
 ## Out of scope (deferred)
 
