@@ -6,58 +6,75 @@ import { createFormatter } from '../src/formatter.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixture = JSON.parse(readFileSync(join(__dirname, 'formatter.fixture.json'), 'utf8'));
 
-describe('formatter — Crown Jewels regression', () => {
-  it('reproduces the legacy batchUpdate payload exactly', () => {
-    const { buildBatchRequests } = createFormatter(fixture.input);
-    const requests = buildBatchRequests();
-    expect(requests).toEqual(fixture.requests);
-  });
-
-  it('keeps the template placeholder strings exact', () => {
-    const { buildBatchRequests } = createFormatter(fixture.input);
-    const requests = buildBatchRequests();
-
-    const titleReq = requests.find(
-      (r) => r.replaceAllText?.containsText?.text === 'Song Title - Artist Name'
-    );
-    const col2Req = requests.find((r) => r.replaceAllText?.containsText?.text === 'col2');
-
-    expect(titleReq).toBeDefined();
-    expect(titleReq.replaceAllText.replaceText).toBe(fixture.input.title);
-    expect(col2Req).toBeDefined();
-  });
-
-  it('emits no zero-length updateTextStyle ranges', () => {
-    const { buildBatchRequests } = createFormatter(fixture.input);
-    const requests = buildBatchRequests();
-    const empty = requests.filter(
-      (r) =>
-        r.updateTextStyle && r.updateTextStyle.range.startIndex === r.updateTextStyle.range.endIndex
-    );
-    expect(empty).toHaveLength(0);
-  });
-});
-
-describe('formatter — second unbold pass', () => {
-  it('unbolds lyric lines and leaves chords/titles bold', () => {
-    const { buildBatchRequests, buildUnboldRequests } = createFormatter(fixture.input);
-    // Pass 1 must run first to preserve the shared regex state, as in production.
-    buildBatchRequests();
-
-    const cellContent = [
-      makeLine('Verse 1\n', 100, 108), // section title -> stays bold
-      makeLine('White lips, pale face\n', 108, 130), // lyric -> unbold
-      makeLine('G   Cadd9   Em\n', 130, 145), // chords -> stays bold
-    ];
-    const unbold = buildUnboldRequests(cellContent);
-
-    // Exactly one unbold request, for the lyric line.
-    expect(unbold).toHaveLength(1);
-    expect(unbold[0].updateTextStyle.range.startIndex).toBe(108);
-    expect(unbold[0].updateTextStyle.textStyle.bold).toBe(false);
-  });
-});
-
+/** A fake re-read paragraph: one element with the given content + indices. */
 function makeLine(content, startIndex, endIndex) {
   return { paragraph: { elements: [{ startIndex, endIndex, textRun: { content } }] } };
 }
+
+describe('formatter — replace pass (pass 1)', () => {
+  it('emits exactly title, col1, and col2 replaceAllText requests with exact placeholders', () => {
+    const { buildReplaceRequests } = createFormatter({
+      rawText: '[Verse 1]\nG  C\nhello there',
+      title: 'Song- Artist',
+    });
+    const requests = buildReplaceRequests();
+    const placeholders = requests.map((r) => r.replaceAllText.containsText.text);
+    expect(placeholders).toEqual(['Song Title - Artist Name', 'col1', 'col2']);
+    for (const r of requests) {
+      expect(r.replaceAllText.containsText.matchCase).toBe(true);
+    }
+    const titleReq = requests[0];
+    expect(titleReq.replaceAllText.replaceText).toBe('Song- Artist');
+  });
+
+  it('separates cell lines with \\n, never \\r\\n, and decides no bold here', () => {
+    const { buildReplaceRequests } = createFormatter({
+      rawText: '[Verse 1]\nG  C\nhello there\n[Chorus]\nD  Em\nla la la',
+      title: 'T- A',
+    });
+    const requests = buildReplaceRequests();
+    const col1Text = requests[1].replaceAllText.replaceText;
+    expect(col1Text).toContain('\n');
+    expect(col1Text).not.toContain('\r');
+    expect(requests.some((r) => r.updateTextStyle)).toBe(false);
+  });
+});
+
+describe('formatter — style pass (pass 2)', () => {
+  it('bolds chord/section paragraphs and leaves lyric paragraphs unbold, by order', () => {
+    const { buildStyleRequests } = createFormatter({
+      rawText: '[Verse 1]\nG  C\nhello there',
+      title: 'T- A',
+    });
+    // col1 rendered lines are: section "Verse 1", chord "G  C", lyric "hello there".
+    const col1Content = [
+      makeLine('Verse 1\n', 10, 18),
+      makeLine('G  C\n', 18, 23),
+      makeLine('hello there\n', 23, 35),
+    ];
+    const requests = buildStyleRequests(col1Content, null);
+    expect(requests.map((r) => r.updateTextStyle.textStyle.bold)).toEqual([true, true, false]);
+    expect(requests[2].updateTextStyle.range).toEqual({ startIndex: 23, endIndex: 35 });
+  });
+
+  it('skips zero-length (empty trailing) paragraphs', () => {
+    const { buildStyleRequests } = createFormatter({
+      rawText: '[Verse 1]\nG  C\nhello there',
+      title: 'T- A',
+    });
+    const col1Content = [
+      makeLine('Verse 1\n', 10, 18),
+      makeLine('', 18, 18), // zero-length → skipped
+      makeLine('hello there\n', 18, 30),
+    ];
+    const requests = buildStyleRequests(col1Content, null);
+    expect(requests).toHaveLength(2);
+  });
+});
+
+describe('formatter — golden regression', () => {
+  it('reproduces the committed replaceAllText payload for the sample chart', () => {
+    const { buildReplaceRequests } = createFormatter(fixture.input);
+    expect(buildReplaceRequests()).toEqual(fixture.requests);
+  });
+});

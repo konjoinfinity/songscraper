@@ -19,12 +19,34 @@ const CELL_FIELDS =
   'body(content(table(tableRows(tableCells(content(paragraph(elements(endIndex,startIndex,textRun/content))))))))';
 
 /**
- * Pull the column-2 table-cell content array out of a fetched doc, defensively.
+ * Pull a table-cell content array (by column index) out of a fetched doc.
  * @param {object} doc - the documents.get response data
+ * @param {number} col - 0 for the left cell, 1 for the right cell
  * @returns {object[]|null} the cell content array, or null if not found
  */
-function getColumn2Content(doc) {
-  return doc?.body?.content?.[2]?.table?.tableRows?.[0]?.tableCells?.[1]?.content ?? null;
+function getCellContent(doc, col) {
+  return doc?.body?.content?.[2]?.table?.tableRows?.[0]?.tableCells?.[col]?.content ?? null;
+}
+
+/**
+ * Warn (don't fail silently) if a placeholder replacement matched nothing — the
+ * template is likely missing that placeholder. `replies` is the batchUpdate
+ * response, in request order: [title, col1, col2].
+ * @param {object[]} replies - batchUpdate response replies
+ * @param {string} documentId - for the log message
+ * @returns {void}
+ */
+function warnOnMissingPlaceholders(replies, documentId) {
+  const labels = ['title', 'col1', 'col2'];
+  labels.forEach((label, i) => {
+    const changed = replies?.[i]?.replaceAllText?.occurrencesChanged ?? 0;
+    if (!changed) {
+      console.warn(
+        `[docs] placeholder "${label}" matched nothing in ${documentId} — ` +
+          'the template may be missing it (see docs/RASPBERRY_PI.md template setup).'
+      );
+    }
+  });
 }
 
 /**
@@ -39,7 +61,6 @@ export async function createSongDoc(authClient, song) {
 
   const docTitle = buildDocTitle(song.title, song.artist);
   const formatter = createFormatter({ rawText: song.rawText, title: docTitle });
-  const requests = formatter.buildBatchRequests();
 
   // 1. Copy the template (awaited promise form, optionally into a folder).
   const copyBody = { name: docTitle };
@@ -52,22 +73,21 @@ export async function createSongDoc(authClient, song) {
     throw new Error('Drive copy did not return a document id');
   }
 
-  // 2. Insert the formatted column-1 text + column-2 replacement + title.
-  await docs.documents.batchUpdate({ documentId, requestBody: { requests } });
+  // 2. Pass 1: replace the title + both column placeholders with the rendered text.
+  const { data: replaceResult } = await docs.documents.batchUpdate({
+    documentId,
+    requestBody: { requests: formatter.buildReplaceRequests() },
+  });
+  warnOnMissingPlaceholders(replaceResult.replies, documentId);
 
-  // 3. Second pass: re-read the doc and unbold the lyric lines in column 2.
+  // 3. Pass 2: re-read both cells and bold each paragraph by its rendered kind.
   const { data: doc } = await docs.documents.get({ documentId, fields: CELL_FIELDS });
-  const cellContent = getColumn2Content(doc);
-  if (cellContent) {
-    const unboldRequests = formatter.buildUnboldRequests(cellContent);
-    if (unboldRequests.length > 0) {
-      await docs.documents.batchUpdate({ documentId, requestBody: { requests: unboldRequests } });
-    }
-  } else {
-    console.warn(
-      `Could not locate column-2 table cell in ${documentId} — skipping unbold pass. ` +
-        'The template layout may have changed.'
-    );
+  const styleRequests = formatter.buildStyleRequests(
+    getCellContent(doc, 0),
+    getCellContent(doc, 1)
+  );
+  if (styleRequests.length > 0) {
+    await docs.documents.batchUpdate({ documentId, requestBody: { requests: styleRequests } });
   }
 
   return { documentId, docUrl: docUrl(documentId), title: song.title, artist: song.artist };
