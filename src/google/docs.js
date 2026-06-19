@@ -70,36 +70,35 @@ export async function createSongDoc(authClient, song) {
   if (config.driveFolderId) {
     copyBody.parents = [config.driveFolderId];
   }
-  const copy = await drive.files.copy({
-    fileId: config.templateDocId,
-    requestBody: copyBody,
-    timeout,
-  });
+  // The timeout is a gaxios request option (2nd arg) — putting it in the params
+  // object sends it as a query parameter and Google rejects the request.
+  const copy = await drive.files.copy(
+    { fileId: config.templateDocId, requestBody: copyBody },
+    { timeout }
+  );
   const documentId = copy.data.id;
   if (!documentId) {
     throw new Error('Drive copy did not return a document id');
   }
 
   // 2. Pass 1: replace the title + both column placeholders with the rendered text.
-  const { data: replaceResult } = await docs.documents.batchUpdate({
-    documentId,
-    requestBody: { requests: formatter.buildReplaceRequests() },
-    timeout,
-  });
+  const { data: replaceResult } = await docs.documents.batchUpdate(
+    { documentId, requestBody: { requests: formatter.buildReplaceRequests() } },
+    { timeout }
+  );
   warnOnMissingPlaceholders(replaceResult.replies, documentId);
 
   // 3. Pass 2: re-read both cells and bold each paragraph by its rendered kind.
-  const { data: doc } = await docs.documents.get({ documentId, fields: CELL_FIELDS, timeout });
+  const { data: doc } = await docs.documents.get({ documentId, fields: CELL_FIELDS }, { timeout });
   const styleRequests = formatter.buildStyleRequests(
     getCellContent(doc, 0),
     getCellContent(doc, 1)
   );
   if (styleRequests.length > 0) {
-    await docs.documents.batchUpdate({
-      documentId,
-      requestBody: { requests: styleRequests },
-      timeout,
-    });
+    await docs.documents.batchUpdate(
+      { documentId, requestBody: { requests: styleRequests } },
+      { timeout }
+    );
   }
 
   return { documentId, docUrl: docUrl(documentId), title: song.title, artist: song.artist };
