@@ -60,11 +60,27 @@ function isFooterLine(line) {
 /** Collapse all runs of whitespace to a single space and trim. */
 const collapseSpaces = (text) => text.trim().replace(/\s+/g, ' ');
 
-/** Build a RenderedSection from its lines. */
-const renderedSection = (renderLines, compressed) => ({
+/**
+ * Estimated *physical* line count: a line longer than the column width wraps onto
+ * multiple printed lines, so it must count as more than one toward the page
+ * budget. With charsPerColumn = Infinity this is just the line count (used by the
+ * pure render unit tests).
+ * @param {RenderedLine[]} renderLines
+ * @param {number} charsPerColumn - approx characters before a line wraps
+ * @returns {number}
+ */
+function countRenderedLines(renderLines, charsPerColumn) {
+  return renderLines.reduce(
+    (sum, line) => sum + Math.max(1, Math.ceil(line.text.length / charsPerColumn)),
+    0
+  );
+}
+
+/** Build a RenderedSection, sizing it for the given column width (wrap-aware). */
+const renderedSection = (renderLines, compressed, charsPerColumn = Infinity) => ({
   renderLines,
   compressed,
-  lineCount: renderLines.length,
+  lineCount: countRenderedLines(renderLines, charsPerColumn),
 });
 
 /**
@@ -166,21 +182,23 @@ export function sectionSignature(section) {
  * line becomes the one-liner "Heading - Em G D"; otherwise it is a heading line
  * followed by its body lines.
  * @param {Section} section
+ * @param {number} [charsPerColumn=Infinity] - column width for wrap-aware sizing
  * @returns {RenderedSection}
  */
-export function renderFull(section) {
+export function renderFull(section, charsPerColumn = Infinity) {
   const body = section.lines;
   const chordOnly = body.length > 0 && body.every((line) => line.kind === 'chord');
   if (section.heading && chordOnly && body.length === 1) {
     return renderedSection(
       [{ kind: 'chord', text: `${section.heading} - ${collapseSpaces(body[0].text)}` }],
-      false
+      false,
+      charsPerColumn
     );
   }
   const lines = [];
   if (section.heading) lines.push({ kind: 'section', text: section.heading });
   lines.push(...body);
-  return renderedSection(lines, false);
+  return renderedSection(lines, false, charsPerColumn);
 }
 
 /**
@@ -188,15 +206,16 @@ export function renderFull(section) {
  * repeats when the chart must shrink to fit one page. Falls back to a full render
  * for an unheaded section (a bare one-liner would be meaningless).
  * @param {Section} section
+ * @param {number} [charsPerColumn=Infinity] - column width for wrap-aware sizing
  * @returns {RenderedSection}
  */
-export function renderCompressed(section) {
-  if (!section.heading) return renderFull(section);
+export function renderCompressed(section, charsPerColumn = Infinity) {
+  if (!section.heading) return renderFull(section, charsPerColumn);
   const firstChord = section.lines.find((line) => line.kind === 'chord');
   const text = firstChord
     ? `${section.heading} - ${collapseSpaces(firstChord.text)}`
     : section.heading;
-  return renderedSection([{ kind: firstChord ? 'chord' : 'section', text }], true);
+  return renderedSection([{ kind: firstChord ? 'chord' : 'section', text }], true, charsPerColumn);
 }
 
 /** Total rendered line count of a column, including one blank separator between sections. */
@@ -236,11 +255,12 @@ export function packColumns(sections, budget) {
  * overflow one page, compress repeated sections (those whose content matches an
  * earlier section) into one-liners — latest repeats first — until it fits.
  * @param {string} rawText
- * @param {{ columnLineBudget: number }} opts
+ * @param {{ columnLineBudget: number, charsPerColumn?: number }} opts
  * @returns {Layout}
  */
 export function buildLayout(rawText, opts) {
   const budget = opts?.columnLineBudget ?? 40;
+  const charsPerColumn = opts?.charsPerColumn ?? Infinity;
   const sections = parseSections(rawText)
     .map(compactSection)
     .filter((sec) => sec.lines.length > 0 || sec.heading);
@@ -251,11 +271,11 @@ export function buildLayout(rawText, opts) {
     (sec, i) => Boolean(sec.heading) && sigs[i] !== '' && sigs.indexOf(sigs[i]) < i
   );
 
-  const rendered = sections.map(renderFull);
+  const rendered = sections.map((sec) => renderFull(sec, charsPerColumn));
   let layout = packColumns(rendered, budget);
   for (let i = sections.length - 1; i >= 0 && !layout.fits; i--) {
     if (!repeatable[i]) continue;
-    rendered[i] = renderCompressed(sections[i]);
+    rendered[i] = renderCompressed(sections[i], charsPerColumn);
     layout = packColumns(rendered, budget);
   }
   return layout;
