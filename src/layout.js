@@ -84,13 +84,19 @@ const renderedSection = (renderLines, compressed, charsPerColumn = Infinity) => 
 });
 
 /**
- * Whether a raw line opens a new section (a bracketed heading or a recognized
- * section word).
+ * Whether a raw line opens a new section. A bracketed line (`[Intro]`) always is.
+ * A bare line counts only if it's a recognized section word AND short enough to be
+ * a real label — not a sentence that merely begins with one ("Intro chords as an
+ * example…", the Spanish lyric "Solo con pensarlo…"). Real UG headings are ≤4
+ * words / ≤24 chars; longer keyword-initial prose is body/preamble, not a heading.
  * @param {string} line
  * @returns {boolean}
  */
 function isHeading(line) {
-  return BRACKETED_HEADING.test(line) || classifyLine(line) === 'section';
+  if (BRACKETED_HEADING.test(line)) return true;
+  if (classifyLine(line) !== 'section') return false;
+  const trimmed = line.trim();
+  return trimmed.length <= 24 && trimmed.split(/\s+/).length <= 4;
 }
 
 /**
@@ -128,7 +134,10 @@ export function parseSections(rawText) {
     if (!current) continue; // drop preamble before the first real heading
     // Footer is only checked inside the chart, so preamble links/URLs don't end it.
     if (isFooterLine(raw)) break;
-    current.lines.push({ kind: classifyLine(raw), text: raw });
+    // A body line that classifies as 'section' but wasn't a heading (keyword-initial
+    // prose, e.g. "Solo con pensarlo…") is lyric text, not a heading — don't bold it.
+    const kind = classifyLine(raw);
+    current.lines.push({ kind: kind === 'section' ? 'lyric' : kind, text: raw });
   }
   if (sections.length > 0) return sections;
   // No headings at all — treat content up to the footer as one section.

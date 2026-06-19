@@ -29,6 +29,9 @@ import { config, selectors } from './config.js';
 // clears (measured: 75s timeout vs ~12s with fresh contexts). null when no browser
 // is alive; relaunched lazily on next use.
 let sharedBrowser = null;
+// In-flight launch promise, so two concurrent first-requests share one launch
+// instead of racing to start (and leak) two browsers.
+let launchInFlight = null;
 
 // Markers of a Cloudflare (or similar) bot-check interstitial, matched against
 // the page title and/or a snippet of the HTML. Kept deliberately broad.
@@ -197,15 +200,25 @@ export async function createBrowserSession(strategy = config.fetchStrategy) {
  * @param {() => Promise<import('puppeteer').Browser>} [launch] - injectable launcher (tests)
  * @returns {Promise<import('puppeteer').Browser>}
  */
-export async function getBrowser(launch = () => puppeteer.launch(launchOptions())) {
+export function getBrowser(launch = () => puppeteer.launch(launchOptions())) {
   if (sharedBrowser?.connected) {
-    return sharedBrowser;
+    return Promise.resolve(sharedBrowser);
   }
-  sharedBrowser = await launch();
-  sharedBrowser.once('disconnected', () => {
-    sharedBrowser = null;
-  });
-  return sharedBrowser;
+  // Memoize the launch promise: concurrent cold-start callers await the same one.
+  if (!launchInFlight) {
+    launchInFlight = launch()
+      .then((browser) => {
+        sharedBrowser = browser;
+        browser.once('disconnected', () => {
+          sharedBrowser = null;
+        });
+        return browser;
+      })
+      .finally(() => {
+        launchInFlight = null;
+      });
+  }
+  return launchInFlight;
 }
 
 /**

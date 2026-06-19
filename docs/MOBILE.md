@@ -20,7 +20,7 @@ sequenceDiagram
     SS->>Svc: POST /scrape { url } + x-api-key
     Note over Svc,UG: real browser on a residential IP<br/>clears the Cloudflare wall
     Svc->>UG: load chart, extract text
-    Svc->>G: copy template → batchUpdate → unbold pass
+    Svc->>G: copy template → replace placeholders → bold-by-kind style pass
     G-->>Svc: docUrl
     Svc-->>SS: { docUrl, title, artist }
     SS->>You: open the Google Doc

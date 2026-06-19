@@ -69,6 +69,10 @@ export const config = {
   // How long to wait for navigation/selectors before giving up (ms).
   scrapeTimeoutMs: 45_000,
 
+  // Per-call timeout for Google Drive/Docs API requests (ms), so a stalled Google
+  // socket can't hang the /scrape handler (and a Cloud Run container slot).
+  googleApiTimeoutMs: Number(process.env.GOOGLE_API_TIMEOUT_MS) || 30_000,
+
   // Layout tuning for the section-aware formatter (src/layout.js). columnLineBudget
   // is the max *physical* lines that fit in one table cell on page 1 before content
   // would spill onto a second page; two columns ≈ one page. Line counting is

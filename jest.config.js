@@ -4,16 +4,17 @@ export default {
   transform: {},
   testMatch: ['**/test/**/*.test.js'],
   collectCoverageFrom: ['src/**/*.js'],
-  // Ratchet floor (Konjo retrofit): browser/network modules (scrapeSong, google/*,
-  // server routes) have no unit coverage yet, so a hard 80% gate would be a false
-  // failure today. These floors sit just below the current measured baseline so CI
-  // blocks regressions while we raise coverage toward the 80% target over time.
+  // Ratchet floor (Konjo retrofit): the browser/network glue (loadChartPage,
+  // createSongDoc's live API handoff) still needs a real browser/network to cover,
+  // so a hard 80% gate would false-fail today. These floors sit just below the
+  // current measured baseline (~75% lines) so CI blocks regressions while we keep
+  // ratcheting toward the 80% target. Raise these whenever coverage climbs.
   coverageThreshold: {
     global: {
-      lines: 45,
-      statements: 45,
-      functions: 45,
-      branches: 45,
+      lines: 72,
+      statements: 70,
+      functions: 68,
+      branches: 75,
     },
   },
 };

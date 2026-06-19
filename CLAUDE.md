@@ -17,12 +17,16 @@ bash .konjo/scripts/install-hooks.sh   # install Wall 1 pre-commit hook
 ```
 
 ## Critical Constraints
-- **Crown Jewels — do not change formatter output.** `src/formatter.js` builds the Docs `batchUpdate`
-  payload (two-pass bold/unbold). Its output must stay equivalent to the legacy `pageScraper.js`.
-  The regression test `test/formatter.test.js` asserts payload equality against `test/formatter.fixture.json`.
-  Never alter the `titles`/`chords` regexes, the `sectionTitles` array, the index math, or the
-  template placeholder strings (`"Song Title - Artist Name"`, `"col2"`) without regenerating the
-  fixture *and* explicit sign-off.
+- **Crown Jewels — change formatter/layout behavior only deliberately.** `src/formatter.js` +
+  `src/layout.js` build the Docs `batchUpdate` payload in two passes: pass 1 = three `replaceAllText`
+  requests (title + `col1` + `col2` placeholders); pass 2 = `updateTextStyle` per paragraph, **bold by
+  rendered kind** (chord/section bold, lyric not), aligned by content position with indices from a
+  re-read of the doc. The regression test `test/formatter.test.js` asserts the pass-1 payload against
+  `test/formatter.fixture.json`; `test/layout.test.js` + `test/charts.test.js` guard layout behavior.
+  Don't alter the template placeholder strings (`"Song Title - Artist Name"`, `"col1"`, `"col2"`), the
+  wrap-aware budget semantics, or the bold-by-kind contract without regenerating the fixture (`npm run
+  fixture`) *and* explicit sign-off. (Line classification lives in `src/detect.js`; there are no
+  chord/section regexes in the formatter anymore.)
 - **No secrets in code.** `creds.json`, `token.json`, `.env`, and refresh tokens live in env vars /
   Secret Manager only. They are git-ignored. Never write `token.json` to disk on the deployed path.
 - **Headless by default; a real (headed) browser only on sanctioned paths.** When Puppeteer *launches*
@@ -58,13 +62,15 @@ Title/artist also fall back to parsing `document.title` when their selectors fai
 | Module | Role |
 |--------|------|
 | `src/server.js` | Express app, routes, API-key guard, input validation |
-| `src/scraper.js` | `scrapeSong(url) -> { title, artist, rawText }` + `extractChordText` (strategy) |
-| `src/detect.js` | heuristic chord-block detection: pure scoring + Puppeteer glue (primary strategy) |
-| `src/formatter.js` | **Crown Jewels**: builds `batchUpdate` requests + second unbold pass (behavior-preserved) |
-| `src/google/auth.js` | OAuth2 client, `/auth` + `/oauth2callback`, refresh-token load |
-| `src/google/docs.js` | copy template, run `batchUpdate`, re-read doc for unbold pass |
-| `src/config.js` | env-driven config: templateId, folderId, scopes, selectors, strategy, port |
-| `src/constants.js` | `sectionTitles[]`, `titles` regex source, `chords` regex source |
+| `src/scraper.js` | `scrapeSong(url) -> { title, artist, rawText }` (1 retry) + `extractChordText` (strategy) |
+| `src/fetcher.js` | page acquisition: warm shared browser + per-scrape context (`openChart`), fetch strategies |
+| `src/detect.js` | heuristic chord-block detection + `classifyLine` (pure scoring + Puppeteer glue) |
+| `src/layout.js` | **Crown Jewels**: pure section-aware layout — parse, compact, dedupe, wrap-aware 2-col pack |
+| `src/formatter.js` | **Crown Jewels**: `replaceAllText` requests (pass 1) + bold-by-kind style pass (pass 2) |
+| `src/google/auth.js` | OAuth2 client (memoized), `/auth` + `/oauth2callback`, refresh-token load |
+| `src/google/docs.js` | copy template, replace placeholders, re-read doc for the style pass (timed out) |
+| `src/config.js` | env-driven config: templateId, folderId, scopes, selectors, strategy, port, budgets, timeouts |
+| `src/constants.js` | template placeholder strings (`col1`, `col2`, title) |
 
 ## Quality Framework
 This repo runs the **Konjo Three-Wall Quality Framework**. See `KONJO_QUALITY_FRAMEWORK.md`.

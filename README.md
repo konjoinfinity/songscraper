@@ -41,7 +41,7 @@ flowchart LR
 
     phone -->|"POST /scrape { url }<br/>over Tailscale (WireGuard)"| ex
     fe <-->|"real browser +<br/>residential IP clears the wall"| ug
-    fmt -->|"copy template → batchUpdate →<br/>unbold pass"| g
+    fmt -->|"copy template → replace placeholders →<br/>re-read → bold-by-kind style pass"| g
     g -.->|"docUrl"| ex
     ex -.->|"{ docUrl, title, artist }"| phone
 ```
@@ -57,10 +57,11 @@ src/
   server.js        Express app + routes + API-key guard + URL validation
   scraper.js       scrapeSong(url) -> { title, artist, rawText } + extractChordText (strategy)
   detect.js        heuristic chord-block detection (content-fingerprint scoring) — primary strategy
-  formatter.js     Crown Jewels: builds the batchUpdate requests + unbold second pass
+  formatter.js     Crown Jewels: builds replaceAllText requests + bold-by-kind style pass
+  layout.js        pure section-aware layout: parse, compact, dedupe, wrap-aware 2-column pack
   google/
     auth.js        OAuth2 client, /auth + /oauth2callback, refresh-token load
-    docs.js        copy template, batchUpdate, unbold second pass (all awaited)
+    docs.js        copy template, replace placeholders, re-read + style pass (all awaited, timed out)
   config.js        env-driven: templateId, folderId, scopes, selectors, strategy, port
   constants.js     sectionTitles[], titles regex, chords regex
 test/
@@ -166,18 +167,26 @@ npm run lint
 node src/server.js       # GET http://localhost:8080/healthz -> {"status":"ok"}
 ```
 
-## The Crown Jewels (do not change behavior)
+## The Crown Jewels (do not change behavior lightly)
 
-The formatting logic in `src/formatter.js` is the fragile heart of the tool. It was **relocated** from
-the legacy `pageScraper.js` with its output preserved exactly:
-- two-pass formatting (insert + bold guesses, then re-read and unbold lyric lines),
-- the template contract (`"Song Title - Artist Name"` and `"col2"` placeholders, 2-column table),
-- the `titles`/`chords` regexes and `sectionTitles` array,
-- the index math that builds the requests.
+The formatting logic in `src/formatter.js` + `src/layout.js` is the fragile heart of the tool. It
+builds the Google Docs `batchUpdate` payload in **two passes**:
+- **Pass 1 — `buildReplaceRequests`**: three `replaceAllText` requests that fill the template's title
+  placeholder and the two table-cell placeholders (`"Song Title - Artist Name"`, `"col1"`, `"col2"`)
+  with the rendered column text. Pure string assembly — **no index math**.
+- **Pass 2 — `buildStyleRequests`**: after the doc is re-read, one `updateTextStyle` per paragraph,
+  **bold by rendered kind** (chord/section bold, lyric not), aligned by content position with indices
+  taken straight from the document. No "guess then unbold", and no global-regex state between lines.
 
-`npm test` asserts the refactored formatter produces a payload **identical** to the captured legacy
-payload (`test/formatter.fixture.json`, 87 requests for the sample chart). Regenerate the fixture only
-with `npm run fixture` and explicit sign-off.
+Layout (`src/layout.js`) is a pure pipeline: parse into sections (dropping preamble/footer chrome) →
+collapse repeated chord lines → detect repeats → render full or as a one-liner → pack whole sections
+into two columns (never split, never duplicate) with a **wrap-aware line budget** so column 1 doesn't
+spill to a second page. Line classification reuses `src/detect.js` (`classifyLine`).
+
+`npm test` includes a golden regression (`test/formatter.test.js` vs `test/formatter.fixture.json` —
+the pass-1 `replaceAllText` payload for the sample chart) plus behavior tests in `test/layout.test.js`
+and 10 real-chart fixtures in `test/charts.test.js`. Regenerate the fixture only with `npm run fixture`
+and explicit sign-off.
 
 ## Deployment
 

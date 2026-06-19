@@ -174,6 +174,25 @@ describe('getBrowser — warm reuse', () => {
     expect(await getBrowser(launch)).toBe(second);
     expect(launches).toBe(2);
   });
+
+  it('launches only once under concurrent cold-start calls', async () => {
+    let launches = 0;
+    let resolveLaunch = null;
+    const fake = { connected: true, once: () => undefined, close: () => Promise.resolve() };
+    const launch = () => {
+      launches += 1;
+      return new Promise((resolve) => {
+        resolveLaunch = resolve;
+      });
+    };
+    // Both calls happen before the launch resolves → they must share one launch.
+    const first = getBrowser(launch);
+    const second = getBrowser(launch);
+    resolveLaunch(fake);
+    expect(await first).toBe(fake);
+    expect(await second).toBe(fake);
+    expect(launches).toBe(1);
+  });
 });
 
 describe('openChart — context lifecycle', () => {
