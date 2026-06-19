@@ -12,3 +12,6 @@ coverage
 
 # OS / editor
 .DS_Store
+
+# Local scratch dir for chart review (not committed)
+.charts/
