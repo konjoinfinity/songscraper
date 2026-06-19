@@ -1,4 +1,4 @@
-import { extractChordText, readFirst } from '../src/scraper.js';
+import { extractChordText, readFirst, isRetryableScrapeError } from '../src/scraper.js';
 
 // A strong chord-chart candidate (chords-above-lyrics with section headers).
 const CHART = `[Verse 1]
@@ -75,5 +75,23 @@ describe('readFirst — single-valued field reads', () => {
   it('returns an empty string when nothing matches', async () => {
     const page = makePage({ selectorParts: [] });
     expect(await readFirst(page, 'h1')).toBe('');
+  });
+});
+
+describe('isRetryableScrapeError', () => {
+  it('retries transient empty-block and anti-bot failures', () => {
+    expect(isRetryableScrapeError(new Error('Scrape returned an empty chord block — ...'))).toBe(
+      true
+    );
+    expect(isRetryableScrapeError(new Error('Blocked by anti-bot protection (Cloudflare).'))).toBe(
+      true
+    );
+  });
+
+  it('does not retry other failures', () => {
+    expect(isRetryableScrapeError(new Error('Drive copy did not return a document id'))).toBe(
+      false
+    );
+    expect(isRetryableScrapeError(undefined)).toBe(false);
   });
 });
