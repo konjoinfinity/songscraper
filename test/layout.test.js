@@ -26,6 +26,29 @@ describe('parseSections', () => {
     expect(JSON.stringify(sections)).not.toMatch(/Thanks for using/);
   });
 
+  it('cuts trailing UG chrome (ratings, ads, nav, links, dividers)', () => {
+    const chart = [
+      '[Verse 1]',
+      'G  D',
+      'real lyric line',
+      '------------------------------------------',
+      'I tabbed this myself, enjoy!',
+      'https://www.youtube.com/watch?v=abc',
+      'X',
+      'Print',
+      'Create correction',
+      'Welcome Offer',
+      'Strumming pattern',
+      'There is no strumming pattern for this song yet. Create and get +5 IQ',
+    ].join('\n');
+    const sections = parseSections(chart);
+    const dump = JSON.stringify(sections);
+    expect(dump).toContain('real lyric line');
+    expect(dump).not.toMatch(
+      /youtube|Welcome Offer|Strumming pattern|Create correction|tabbed this/
+    );
+  });
+
   it('treats a heading-less chart as one untitled section', () => {
     const sections = parseSections(['G  C', 'some words', 'D  Em'].join('\n'));
     expect(sections).toHaveLength(1);

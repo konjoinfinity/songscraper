@@ -23,8 +23,36 @@ const BRACKETED_HEADING = /^\s*\[.+\]\s*$/;
 // note, the [Chords] fingering legend, tuning/tutorial notes. These (and the lines
 // under them, before the first real section) are dropped.
 const PREAMBLE_HEADING = /^(?:capo|chords?|tuning|tutorial|tab)\b/i;
-// Trailing UG boilerplate to stop parsing at (keeps it out of the last section).
-const FOOTER = /thanks for using/i;
+
+// Lines that mark the start of Ultimate Guitar's trailing chrome — ratings, ads,
+// nav, the instrument/chord legend — or a tabber's sign-off / link. Everything
+// from the first such line onward is dropped. Matched against the trimmed line.
+const FOOTER_MARKERS = [
+  /^thanks for using/i,
+  /^tabbed by\b/i,
+  /^create correction$/i,
+  /^report bad tab$/i,
+  /^last update:/i,
+  /^please,? rate/i,
+  /^(?:welcome offer|try now|play next)$/i,
+  /^strumming pattern$/i,
+  /^there is no strumming pattern/i,
+  /^(?:print|x)$/i,
+  /(?:youtube\.com|youtu\.be)/i,
+  /^https?:\/\/\S+$/i,
+  /^-{20,}\s*$/,
+];
+
+/**
+ * Whether a line marks the start of trailing non-chart content (UG chrome, an ad,
+ * a sign-off, a link, or a long divider rule).
+ * @param {string} line
+ * @returns {boolean}
+ */
+function isFooterLine(line) {
+  const trimmed = line.trim();
+  return FOOTER_MARKERS.some((re) => re.test(trimmed));
+}
 
 /** Collapse all runs of whitespace to a single space and trim. */
 const collapseSpaces = (text) => text.trim().replace(/\s+/g, ' ');
@@ -69,7 +97,6 @@ export function parseSections(rawText) {
   const sections = [];
   let current = null;
   for (const raw of lines) {
-    if (FOOTER.test(raw)) break;
     if (isHeading(raw)) {
       const heading = headingName(raw);
       // A preamble heading (Capo/Chords legend/tuning) never opens a section; while
@@ -80,13 +107,15 @@ export function parseSections(rawText) {
       continue;
     }
     if (!current) continue; // drop preamble before the first real heading
+    // Footer is only checked inside the chart, so preamble links/URLs don't end it.
+    if (isFooterLine(raw)) break;
     current.lines.push({ kind: classifyLine(raw), text: raw });
   }
   if (sections.length > 0) return sections;
-  // No headings at all — treat the whole (pre-footer) chart as one section.
+  // No headings at all — treat content up to the footer as one section.
   const body = [];
   for (const raw of lines) {
-    if (FOOTER.test(raw)) break;
+    if (isFooterLine(raw)) break;
     body.push({ kind: classifyLine(raw), text: raw });
   }
   return [{ name: null, heading: null, lines: body }];
