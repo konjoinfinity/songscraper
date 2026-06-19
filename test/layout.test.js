@@ -49,6 +49,25 @@ describe('parseSections', () => {
     );
   });
 
+  it('does not treat keyword-initial prose as a heading', () => {
+    const chart = [
+      'Intro chords as an example of the picking pattern below',
+      'Standard tuning',
+      '[Intro]',
+      'Am  C  D  F',
+      '[Verse 1]',
+      'Solo con pensarlo se acelera el pulso', // Spanish lyric starting with "Solo"
+    ].join('\n');
+    const sections = parseSections(chart);
+    expect(sections.map((s) => s.heading)).toEqual(['Intro', 'Verse 1']);
+    const dump = JSON.stringify(sections);
+    expect(dump).not.toMatch(/example of the picking/); // prose dropped as preamble
+    // the "Solo …" lyric stays inside Verse 1 as a lyric (not a heading, not bold)
+    const verse = sections.find((s) => s.heading === 'Verse 1');
+    const solo = verse.lines.find((line) => line.text.includes('Solo con pensarlo'));
+    expect(solo.kind).toBe('lyric');
+  });
+
   it('treats a heading-less chart as one untitled section', () => {
     const sections = parseSections(['G  C', 'some words', 'D  Em'].join('\n'));
     expect(sections).toHaveLength(1);
