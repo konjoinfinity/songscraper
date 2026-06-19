@@ -11,6 +11,7 @@ import { timingSafeEqual } from 'node:crypto';
 import express from 'express';
 import { config } from './config.js';
 import { scrapeSong } from './scraper.js';
+import { closeSharedBrowser } from './fetcher.js';
 import { getAuthorizedClient, handleAuth, handleOAuthCallback } from './google/auth.js';
 import { createSongDoc } from './google/docs.js';
 
@@ -22,7 +23,7 @@ app.use(express.json({ limit: '16kb' }));
  * @param {unknown} provided - the value of the incoming x-api-key header
  * @returns {boolean} true only if it matches the configured API_KEY
  */
-function apiKeyOk(provided) {
+export function apiKeyOk(provided) {
   if (!config.apiKey || typeof provided !== 'string') return false;
   const providedBuf = Buffer.from(provided);
   const expectedBuf = Buffer.from(config.apiKey);
@@ -92,15 +93,26 @@ app.post('/scrape', requireApiKey, async (req, res) => {
     const result = await createSongDoc(authClient, song);
     res.status(200).json({ docUrl: result.docUrl, title: result.title, artist: result.artist });
   } catch (err) {
+    // Log the full reason server-side; never echo internals (paths, doc ids,
+    // provider names, stack) to the client (security.md).
     console.error('[scrape] failed:', err.message);
-    res.status(500).json({ error: 'Scrape failed', detail: err.message });
+    res.status(500).json({ error: 'Scrape failed' });
   }
 });
 
 // Start the server unless imported (e.g. by tests).
 const isMain = process.argv[1] && import.meta.url === `file://${process.argv[1]}`;
 if (isMain) {
-  app.listen(config.port, () => {
+  const server = app.listen(config.port, () => {
     console.log(`songscraper listening on :${config.port}`);
   });
+  // Close the warm browser and the HTTP server cleanly on shutdown so a container
+  // recycle (Cloud Run) or service restart doesn't orphan Chrome.
+  const shutdown = async (signal) => {
+    console.log(`[shutdown] ${signal} — closing browser and server`);
+    await closeSharedBrowser();
+    server.close(() => process.exit(0));
+  };
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }

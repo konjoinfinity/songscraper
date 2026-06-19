@@ -1,6 +1,7 @@
-// Google Drive + Docs operations: copy the template, run the formatter's
-// batchUpdate, then re-read the doc and run the unbold second pass. Fully
-// awaited (no callback-style API calls).
+// Google Drive + Docs operations: copy the template, replace the title/column
+// placeholders, then re-read the doc and run the deterministic bold-by-kind style
+// pass. Fully awaited (no callback-style API calls); every call is bounded by a
+// timeout so a hung Google socket can't pin a container.
 
 import { google } from 'googleapis';
 import { config } from '../config.js';
@@ -24,7 +25,7 @@ const CELL_FIELDS =
  * @param {number} col - 0 for the left cell, 1 for the right cell
  * @returns {object[]|null} the cell content array, or null if not found
  */
-function getCellContent(doc, col) {
+export function getCellContent(doc, col) {
   return doc?.body?.content?.[2]?.table?.tableRows?.[0]?.tableCells?.[col]?.content ?? null;
 }
 
@@ -36,7 +37,7 @@ function getCellContent(doc, col) {
  * @param {string} documentId - for the log message
  * @returns {void}
  */
-function warnOnMissingPlaceholders(replies, documentId) {
+export function warnOnMissingPlaceholders(replies, documentId) {
   const labels = ['title', 'col1', 'col2'];
   labels.forEach((label, i) => {
     const changed = replies?.[i]?.replaceAllText?.occurrencesChanged ?? 0;
@@ -61,13 +62,19 @@ export async function createSongDoc(authClient, song) {
 
   const docTitle = buildDocTitle(song.title, song.artist);
   const formatter = createFormatter({ rawText: song.rawText, title: docTitle });
+  // Bound every Google round trip so a stalled socket can't hang the request.
+  const timeout = config.googleApiTimeoutMs;
 
   // 1. Copy the template (awaited promise form, optionally into a folder).
   const copyBody = { name: docTitle };
   if (config.driveFolderId) {
     copyBody.parents = [config.driveFolderId];
   }
-  const copy = await drive.files.copy({ fileId: config.templateDocId, requestBody: copyBody });
+  const copy = await drive.files.copy({
+    fileId: config.templateDocId,
+    requestBody: copyBody,
+    timeout,
+  });
   const documentId = copy.data.id;
   if (!documentId) {
     throw new Error('Drive copy did not return a document id');
@@ -77,17 +84,22 @@ export async function createSongDoc(authClient, song) {
   const { data: replaceResult } = await docs.documents.batchUpdate({
     documentId,
     requestBody: { requests: formatter.buildReplaceRequests() },
+    timeout,
   });
   warnOnMissingPlaceholders(replaceResult.replies, documentId);
 
   // 3. Pass 2: re-read both cells and bold each paragraph by its rendered kind.
-  const { data: doc } = await docs.documents.get({ documentId, fields: CELL_FIELDS });
+  const { data: doc } = await docs.documents.get({ documentId, fields: CELL_FIELDS, timeout });
   const styleRequests = formatter.buildStyleRequests(
     getCellContent(doc, 0),
     getCellContent(doc, 1)
   );
   if (styleRequests.length > 0) {
-    await docs.documents.batchUpdate({ documentId, requestBody: { requests: styleRequests } });
+    await docs.documents.batchUpdate({
+      documentId,
+      requestBody: { requests: styleRequests },
+      timeout,
+    });
   }
 
   return { documentId, docUrl: docUrl(documentId), title: song.title, artist: song.artist };

@@ -33,23 +33,34 @@ function serializeColumn(sections) {
 }
 
 /**
- * Emit one bold updateTextStyle per cell paragraph, matched to the rendered lines
- * by order. Indices come from the re-read document (never computed); zero-length
- * (empty trailing) paragraphs are skipped.
+ * Bold each cell paragraph by its rendered kind (chord/section bold, lyric not).
+ * Aligns by *content position*, not raw index: only non-empty paragraphs are
+ * matched against non-blank rendered lines, in order — so any stray empty
+ * paragraph Docs may insert (leading, interior, or trailing) can't shift the
+ * styling. Indices come straight from the re-read document. A count mismatch is
+ * logged (never silently mis-styled).
  * @param {object[]|null} cellContent - the cell's content array from documents.get
  * @param {import('./layout.js').RenderedLine[]} renderLines - the lines written to that cell
  * @returns {object[]} updateTextStyle requests
  */
 function styleCellByOrder(cellContent, renderLines) {
   if (!cellContent) return [];
+  const paragraphs = cellContent.filter((entry) => {
+    const element = entry.paragraph?.elements?.[0];
+    return element && element.startIndex != null && element.startIndex < element.endIndex;
+  });
+  const lines = renderLines.filter((line) => line.text.trim() !== '');
+  if (paragraphs.length !== lines.length) {
+    console.warn(
+      `[formatter] style pass: ${paragraphs.length} non-empty paragraphs vs ${lines.length} ` +
+        'rendered lines — styling the aligned prefix.'
+    );
+  }
   const requests = [];
-  const count = Math.min(cellContent.length, renderLines.length);
+  const count = Math.min(paragraphs.length, lines.length);
   for (let i = 0; i < count; i++) {
-    const element = cellContent[i].paragraph?.elements?.[0];
-    if (!element) continue;
-    const { startIndex, endIndex } = element;
-    if (startIndex == null || endIndex == null || startIndex >= endIndex) continue;
-    const bold = renderLines[i].kind !== 'lyric';
+    const { startIndex, endIndex } = paragraphs[i].paragraph.elements[0];
+    const bold = lines[i].kind !== 'lyric';
     requests.push({
       updateTextStyle: { range: { startIndex, endIndex }, textStyle: { bold }, fields: 'bold' },
     });
