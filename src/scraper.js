@@ -7,14 +7,23 @@ import { detectChordBlock, parseTitleFromDocTitle } from './detect.js';
 import { openChart, isChallengePage } from './fetcher.js';
 
 /**
+ * Read the textContent of every element matching `selector`.
+ * @param {import('puppeteer').Page} page - the Puppeteer page
+ * @param {string} selector - a CSS selector
+ * @returns {Promise<string[]>} the textContent of each match
+ */
+async function readTexts(page, selector) {
+  return page.$$eval(selector, (els) => els.map((el) => el.textContent));
+}
+
+/**
  * Read every match of `selector` and return the concatenated textContent.
  * @param {import('puppeteer').Page} page - the Puppeteer page
  * @param {string} selector - a CSS selector
  * @returns {Promise<string>} the joined textContent of all matches
  */
 async function readJoined(page, selector) {
-  const parts = await page.$$eval(selector, (els) => els.map((el) => el.textContent));
-  return parts.join('');
+  return (await readTexts(page, selector)).join('');
 }
 
 /**
@@ -27,8 +36,7 @@ async function readJoined(page, selector) {
  * @returns {Promise<string>} the first match's textContent, or ''
  */
 export async function readFirst(page, selector) {
-  const parts = await page.$$eval(selector, (els) => els.map((el) => el.textContent));
-  return parts[0] ?? '';
+  return (await readTexts(page, selector))[0] ?? '';
 }
 
 /**

@@ -57,6 +57,22 @@ describe('formatter — style pass (pass 2)', () => {
     expect(requests[2].updateTextStyle.range).toEqual({ startIndex: 23, endIndex: 35 });
   });
 
+  it('stays aligned past a stray leading empty paragraph (no off-by-one mis-bold)', () => {
+    const { buildStyleRequests } = createFormatter({
+      rawText: '[Verse 1]\nG  C\nhello there',
+      title: 'T- A',
+    });
+    const col1Content = [
+      makeLine('', 9, 9), // stray empty paragraph Docs may leave before the text
+      makeLine('Verse 1\n', 10, 18),
+      makeLine('G  C\n', 18, 23),
+      makeLine('hello there\n', 23, 35),
+    ];
+    const requests = buildStyleRequests(col1Content, null);
+    expect(requests.map((r) => r.updateTextStyle.textStyle.bold)).toEqual([true, true, false]);
+    expect(requests[0].updateTextStyle.range).toEqual({ startIndex: 10, endIndex: 18 });
+  });
+
   it('skips zero-length (empty trailing) paragraphs', () => {
     const { buildStyleRequests } = createFormatter({
       rawText: '[Verse 1]\nG  C\nhello there',
