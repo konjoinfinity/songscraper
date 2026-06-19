@@ -12,7 +12,7 @@ import { openChart, isChallengePage } from './fetcher.js';
  * @param {string} selector - a CSS selector
  * @returns {Promise<string[]>} the textContent of each match
  */
-async function readTexts(page, selector) {
+function readTexts(page, selector) {
   return page.$$eval(selector, (els) => els.map((el) => el.textContent));
 }
 

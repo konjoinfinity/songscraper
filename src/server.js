@@ -111,6 +111,8 @@ if (isMain) {
   const shutdown = async (signal) => {
     console.log(`[shutdown] ${signal} — closing browser and server`);
     await closeSharedBrowser();
+    // Deterministic exit once the browser is closed and the server stops accepting;
+    // throwing in a signal handler is not a shutdown. skipcq: JS-0263
     server.close(() => process.exit(0));
   };
   process.on('SIGTERM', () => shutdown('SIGTERM'));

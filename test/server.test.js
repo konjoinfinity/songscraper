@@ -12,7 +12,7 @@ describe('isValidUgUrl', () => {
     expect(isValidUgUrl('https://evil.com/x')).toBe(false);
     expect(isValidUgUrl('https://ultimate-guitar.com.evil.com/x')).toBe(false);
     expect(isValidUgUrl('ftp://ultimate-guitar.com/x')).toBe(false);
-    expect(isValidUgUrl('javascript:alert(1)')).toBe(false);
+    expect(isValidUgUrl('file:///etc/passwd')).toBe(false);
     expect(isValidUgUrl('not a url')).toBe(false);
     expect(isValidUgUrl(42)).toBe(false);
   });

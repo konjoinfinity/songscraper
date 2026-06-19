@@ -177,7 +177,7 @@ describe('getBrowser — warm reuse', () => {
 
   it('launches only once under concurrent cold-start calls', async () => {
     let launches = 0;
-    let resolveLaunch;
+    let resolveLaunch = null;
     const fake = { connected: true, once: () => undefined, close: () => Promise.resolve() };
     const launch = () => {
       launches += 1;
