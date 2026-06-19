@@ -51,6 +51,16 @@ describe('real chart layout robustness', () => {
         );
       });
 
+      it('keeps column 1 within the page budget (never spills to a 2nd page)', () => {
+        const col1Lines =
+          layout.col1.reduce((sum, sec) => sum + sec.lineCount, 0) +
+          Math.max(0, layout.col1.length - 1);
+        // The only allowed exception is a single section taller than the budget,
+        // which can't be split — it gets its own column.
+        const singleOversized = layout.col1.length === 1;
+        expect(singleOversized || col1Lines <= config.format.columnLineBudget).toBe(true);
+      });
+
       it('renders no empty lines as section/chord (only real text is bold-eligible)', () => {
         const blankBold = sections
           .flatMap((sec) => sec.renderLines)

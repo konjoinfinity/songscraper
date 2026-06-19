@@ -61,7 +61,7 @@ export async function extractChordText(
  * @returns {boolean}
  */
 export function isRetryableScrapeError(error) {
-  return /empty chord block|anti-bot protection/i.test(error?.message ?? '');
+  return /empty chord block|anti-bot protection|net::err/i.test(error?.message ?? '');
 }
 
 /**
