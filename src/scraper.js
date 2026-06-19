@@ -55,11 +55,42 @@ export async function extractChordText(
 }
 
 /**
- * Scrape a song from an Ultimate Guitar URL.
+ * Whether a scrape error is worth one clean retry: a cold-start/transient empty
+ * page, or an anti-bot challenge that a fresh context often clears.
+ * @param {Error} error
+ * @returns {boolean}
+ */
+export function isRetryableScrapeError(error) {
+  return /empty chord block|anti-bot protection/i.test(error?.message ?? '');
+}
+
+/**
+ * Scrape a song from an Ultimate Guitar URL. Retries once on a transient failure
+ * (the first navigation after a cold start, or a one-off Cloudflare challenge,
+ * occasionally returns an empty/challenge page; a clean second attempt with a
+ * fresh browser context usually succeeds).
  * @param {string} url - a validated ultimate-guitar.com chord chart URL
  * @returns {Promise<{ title: string, artist: string, rawText: string }>}
  */
 export async function scrapeSong(url) {
+  try {
+    return await attemptScrape(url);
+  } catch (error) {
+    if (!isRetryableScrapeError(error)) throw error;
+    console.warn(
+      `[scrape] first attempt failed (${error.message.split('—')[0].trim()}); retrying once.`
+    );
+    return await attemptScrape(url);
+  }
+}
+
+/**
+ * A single scrape attempt: acquire the chart page, guard against anti-bot walls,
+ * and read the fields. The caller (scrapeSong) owns retry policy.
+ * @param {string} url - a validated ultimate-guitar.com chord chart URL
+ * @returns {Promise<{ title: string, artist: string, rawText: string }>}
+ */
+async function attemptScrape(url) {
   // Acquire a loaded chart page plus its `release`. For local strategies this
   // reuses the warm browser process and isolates the scrape in a throwaway
   // BrowserContext; for `remote` it is a per-scrape connection. release() frees
