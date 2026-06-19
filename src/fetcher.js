@@ -200,9 +200,9 @@ export async function createBrowserSession(strategy = config.fetchStrategy) {
  * @param {() => Promise<import('puppeteer').Browser>} [launch] - injectable launcher (tests)
  * @returns {Promise<import('puppeteer').Browser>}
  */
-export async function getBrowser(launch = () => puppeteer.launch(launchOptions())) {
+export function getBrowser(launch = () => puppeteer.launch(launchOptions())) {
   if (sharedBrowser?.connected) {
-    return sharedBrowser;
+    return Promise.resolve(sharedBrowser);
   }
   // Memoize the launch promise: concurrent cold-start callers await the same one.
   if (!launchInFlight) {
