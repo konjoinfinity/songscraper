@@ -86,6 +86,7 @@ describe('isRetryableScrapeError', () => {
     expect(isRetryableScrapeError(new Error('Blocked by anti-bot protection (Cloudflare).'))).toBe(
       true
     );
+    expect(isRetryableScrapeError(new Error('net::ERR_NETWORK_CHANGED at https://ug/x'))).toBe(true);
   });
 
   it('does not retry other failures', () => {
