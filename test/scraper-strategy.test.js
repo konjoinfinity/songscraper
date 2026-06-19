@@ -92,6 +92,6 @@ describe('isRetryableScrapeError', () => {
     expect(isRetryableScrapeError(new Error('Drive copy did not return a document id'))).toBe(
       false
     );
-    expect(isRetryableScrapeError(undefined)).toBe(false);
+    expect(isRetryableScrapeError(null)).toBe(false);
   });
 });
