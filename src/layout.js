@@ -19,6 +19,11 @@ import { classifyLine } from './detect.js';
 // A line that is just a bracketed heading, e.g. "[Pre-Chorus]" — an unambiguous
 // Ultimate Guitar section marker even when its word isn't in detect's vocabulary.
 const BRACKETED_HEADING = /^\s*\[.+\]\s*$/;
+// A chord-diagram / fingering line: a fret-position string like "022100" or
+// "x02220" (UG prints a "chords used" key — "E 022100", "F#m 244222" — above the
+// song). These read as chord lines but are the legend, not the chart, so they must
+// not be mistaken for where a heading-less song begins.
+const FINGERING_LINE = /(?:^|\s)[0-9xX]{4,6}(?:\s|$)/;
 // Heading-shaped lines that are actually preamble, not musical sections: the capo
 // note, the [Chords] fingering legend, tuning/tutorial notes. These (and the lines
 // under them, before the first real section) are dropped.
@@ -116,12 +121,14 @@ export function parseSections(rawText) {
   }
   if (sections.length > 0) return sections;
   // No headings at all — treat content up to the footer as one section. Drop any
-  // leading preamble (credits, a wiki link, "Tabbed by ...", a capo note) first, so
-  // a footer marker sitting in that preamble can't truncate the whole chart before
-  // it begins. This mirrors the heading branch, which only honors footers once a
-  // real section has started. Anchor on the first chord line; if there is none,
-  // scan from the top (best effort) rather than dropping everything.
-  const firstChord = lines.findIndex((raw) => classifyLine(raw) === 'chord');
+  // leading preamble (credits, a wiki link, "Tabbed by ...", a capo note, a chord
+  // legend, timing-key notes, divider rules) first, so a footer marker sitting in
+  // that preamble can't truncate the whole chart before it begins. This mirrors the
+  // heading branch, which only honors footers once a real section has started.
+  // Anchor on the first real chord line — skipping fingering-legend lines like
+  // "E 022100" — and if there is none, scan from the top rather than dropping all.
+  const isSongChordLine = (raw) => classifyLine(raw) === 'chord' && !FINGERING_LINE.test(raw);
+  const firstChord = lines.findIndex(isSongChordLine);
   const body = [];
   for (const raw of lines.slice(firstChord === -1 ? 0 : firstChord)) {
     if (isFooterLine(raw)) break;

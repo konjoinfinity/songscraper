@@ -78,6 +78,33 @@ describe('parseSections', () => {
     expect(dump).not.toMatch(/Tabbed by|to taste/);
   });
 
+  // Regression: a heading-less chart that opens with a chord-fingering legend
+  // ("E 022100" …) followed by a divider rule, then the song. The legend lines read
+  // as chords, so anchoring on the first chord line landed on the legend and the
+  // divider after it truncated the song. Must skip the legend and keep the song.
+  // Real shape from 99 Luftballons (German section words, no [section] headers).
+  it('skips a chord-fingering legend and keeps the song body', () => {
+    const luftballons = [
+      'Nena:  99 Luftballons',
+      '{Text: Carlo Karges}',
+      '-------------------------------------------------', // divider (footer marker)
+      'E     022100',
+      'F#m   244222',
+      'A     x02220',
+      '-------------------------------------------------', // divider between legend and song
+      'A                    F#m',
+      'Hast du etwas Zeit fur mich',
+      'A                    F#m',
+      'Dann singe ich ein Lied fur dich',
+    ].join('\n');
+    const sections = parseSections(luftballons);
+    const dump = JSON.stringify(sections);
+    expect(dump).toContain('Hast du etwas Zeit fur mich');
+    expect(dump).toContain('Dann singe ich ein Lied fur dich');
+    // The fingering legend and credits are dropped, not rendered as the chart.
+    expect(dump).not.toMatch(/022100|244222|Carlo Karges/);
+  });
+
   it('drops a heading-less chart preamble link instead of truncating at it', () => {
     const blackbird = [
       'Blackbird chords',
