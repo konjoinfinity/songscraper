@@ -4,6 +4,9 @@ import {
   analyzeChordText,
   scoreChordText,
   pickBestCandidate,
+  looksLikePageChrome,
+  isChordLegend,
+  isPlausibleChart,
   parseTitleFromDocTitle,
 } from '../src/detect.js';
 
@@ -64,6 +67,14 @@ describe('classifyLine', () => {
     expect(classifyLine('G   D   Em   C')).toBe('chord');
     expect(classifyLine('Em   C       G   D')).toBe('chord');
     expect(classifyLine('White lips, pale face')).toBe('lyric');
+  });
+  it('does not treat an annotation-only line as a chord line', () => {
+    // Version/rating counts and bare repeat marks have no real chord — they must
+    // not read as chord lines (else a page fragment can out-score a tiny chart).
+    expect(classifyLine('(15)')).toBe('lyric');
+    expect(classifyLine('(146)   (251)   (29)')).toBe('lyric');
+    // A real chord with an annotation alongside is still a chord line.
+    expect(classifyLine('| D | D | C | x4')).toBe('chord');
   });
 });
 
@@ -138,6 +149,122 @@ describe('pickBestCandidate', () => {
       { tag: 'pre', text: CHART },
     ]);
     expect(best.text).toBe(CHART);
+  });
+});
+
+// A bare chord-diagram legend (UG's "chords used" fingering list), one chord per
+// line. Real shape that beat the chart on the Happy Cats "Autumn Leaves" page:
+// the legend's perfect chart-line density out-weighed the lyric-diluted chart.
+const CHORD_LEGEND = 'Am\nDm7\nG\nCmaj7\nFmaj7\nE7\nDm';
+
+// A whole-page container: UG nav + toolbar + a buried mini-chart + comments +
+// footer. Real shape that beat the clean <pre> on the "Row Row Row Your Boat" page
+// (raw score 58 from chord-letters scattered through the chrome).
+const PAGE_CHROME = [
+  'Tabs',
+  'Courses',
+  'Songbooks',
+  'Download PDF',
+  'Autoscroll',
+  'Tuning: E A D G B E Capo: No capo',
+  'G          G              G                G',
+  'Row, row, row your boat, gently down the stream',
+  ' C                 G                D             G',
+  'merrily, merrily, merrily, merrily life is but a dream.',
+  'Create correction',
+  'Report bad tab',
+  'More Versions',
+  'Privacy Policy',
+  'Ultimate-Guitar.com',
+  'All rights reserved',
+].join('\n');
+
+describe('looksLikePageChrome', () => {
+  it('flags a block littered with UG page-chrome phrases', () => {
+    expect(looksLikePageChrome(PAGE_CHROME)).toBe(true);
+  });
+  it('does not flag a real chart, a legend, or empty text', () => {
+    expect(looksLikePageChrome(CHART)).toBe(false);
+    expect(looksLikePageChrome(CHORD_LEGEND)).toBe(false);
+    expect(looksLikePageChrome('')).toBe(false);
+  });
+});
+
+describe('isChordLegend', () => {
+  it('flags an all-chord, no-lyric, no-section block', () => {
+    expect(isChordLegend(analyzeChordText(CHORD_LEGEND))).toBe(true);
+  });
+  it('does not flag a real chart (it carries lyric/section lines)', () => {
+    expect(isChordLegend(analyzeChordText(CHART))).toBe(false);
+  });
+});
+
+describe('pickBestCandidate — wrong-block regressions', () => {
+  // Autumn Leaves: the chord-diagram legend (a separate block) must lose to the
+  // real chart even though its density is a perfect 1.0.
+  it('picks the real chart over a higher-density chord legend', () => {
+    const best = pickBestCandidate([
+      { tag: 'div', text: CHORD_LEGEND },
+      { tag: 'pre', text: CHART },
+    ]);
+    expect(best.text).toBe(CHART);
+  });
+
+  // Row Row Row Your Boat: on the live page the whole-page chrome container
+  // out-scored the clean chart on raw count (score 58 vs 7); the chrome guard must
+  // disqualify it — regardless of score — so the chart wins.
+  it('picks the clean chart over a page-chrome container', () => {
+    const best = pickBestCandidate([
+      { tag: 'div', text: PAGE_CHROME },
+      { tag: 'pre', text: CHART },
+    ]);
+    expect(best.text).toBe(CHART);
+  });
+
+  // Row Row Row Your Boat again: a 2-line children's chart in a <pre> is out-scored
+  // on raw count by <div> page fragments (the A–Z artist index; the version list).
+  // The <pre> tier must win regardless — the chart always lives in a <pre>.
+  it('prefers a scoring <pre> chart over higher-scoring <div> decoys', () => {
+    const tinyChart = [
+      'G          G              G                G',
+      'Row, row, row your boat, gently down the stream',
+      ' C                 G                D             G',
+      'merrily, merrily, merrily, merrily life is but a dream.',
+    ].join('\n');
+    // The A–Z artist index (footer nav): single capitals, A–G of which read as chords.
+    const azIndex = 'A\nB\nC\nD\nE\nF\nG\nH\nI\nJ\nK\nL\nM\nN';
+    expect(scoreChordText(azIndex)).toBeGreaterThan(scoreChordText(tinyChart));
+    const best = pickBestCandidate([
+      { tag: 'div', text: azIndex },
+      { tag: 'pre', text: tinyChart },
+    ]);
+    expect(best.text).toBe(tinyChart);
+  });
+
+  // When the only candidate is a legend or page chrome, return null so the caller
+  // falls back to the CSS selector rather than scraping the wrong block.
+  it('returns null when every candidate is a legend or page chrome', () => {
+    expect(
+      pickBestCandidate([
+        { tag: 'div', text: CHORD_LEGEND },
+        { tag: 'div', text: PAGE_CHROME },
+      ])
+    ).toBeNull();
+  });
+});
+
+describe('isPlausibleChart', () => {
+  it('accepts a real chords-over-lyrics chart', () => {
+    expect(isPlausibleChart(CHART)).toBe(true);
+  });
+  it('rejects a bare legend, prose, a one-line header, and empty', () => {
+    expect(isPlausibleChart(CHORD_LEGEND)).toBe(false); // chords only, no lyrics/sections
+    expect(isPlausibleChart(BIO)).toBe(false);
+    expect(isPlausibleChart('Blackbird chords  The Beatles 1968')).toBe(false);
+    expect(isPlausibleChart('')).toBe(false);
+  });
+  it('accepts a chord-only chart that still carries section labels', () => {
+    expect(isPlausibleChart('[Intro]\nG  C  D\n[Solo]\nEm  C  G  D')).toBe(true);
   });
 });
 

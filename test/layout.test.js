@@ -74,6 +74,70 @@ describe('parseSections', () => {
     expect(sections[0].heading).toBeNull();
   });
 
+  // Regression: a heading-less chart whose preamble contains a footer marker (a
+  // "Tabbed by ..." credit or a wiki link) was truncated to its first line because
+  // the no-heading branch honored the footer before the chart began. The preamble
+  // must be dropped and the whole body kept. Real shapes from the Old MacDonald and
+  // Blackbird (no [section] headers) pages.
+  it('keeps the body of a heading-less chart whose preamble holds a footer marker', () => {
+    const oldMacDonald = [
+      'Old MacDonald (Had A Farm) - Nursery rhyme',
+      'Tabbed by Del Bradley', // footer marker, but it is preamble — must not cut here
+      'No CAPO or to taste',
+      'A             D     A',
+      'Old MacDonald had a farm,',
+      'A    E    A',
+      'Ee i ee i oh!',
+    ].join('\n');
+    const sections = parseSections(oldMacDonald);
+    const dump = JSON.stringify(sections);
+    expect(dump).toContain('Old MacDonald had a farm,');
+    expect(dump).toContain('Ee i ee i oh!');
+    // Preamble (including the bare "Tabbed by" credit) is dropped.
+    expect(dump).not.toMatch(/Tabbed by|to taste/);
+  });
+
+  // Regression: a heading-less chart that opens with a chord-fingering legend
+  // ("E 022100" …) followed by a divider rule, then the song. The legend lines read
+  // as chords, so anchoring on the first chord line landed on the legend and the
+  // divider after it truncated the song. Must skip the legend and keep the song.
+  // Real shape from 99 Luftballons (German section words, no [section] headers).
+  it('skips a chord-fingering legend and keeps the song body', () => {
+    const luftballons = [
+      'Nena:  99 Luftballons',
+      '{Text: Carlo Karges}',
+      '-------------------------------------------------', // divider (footer marker)
+      'E     022100',
+      'F#m   244222',
+      'A     x02220',
+      '-------------------------------------------------', // divider between legend and song
+      'A                    F#m',
+      'Hast du etwas Zeit fur mich',
+      'A                    F#m',
+      'Dann singe ich ein Lied fur dich',
+    ].join('\n');
+    const sections = parseSections(luftballons);
+    const dump = JSON.stringify(sections);
+    expect(dump).toContain('Hast du etwas Zeit fur mich');
+    expect(dump).toContain('Dann singe ich ein Lied fur dich');
+    // The fingering legend and credits are dropped, not rendered as the chart.
+    expect(dump).not.toMatch(/022100|244222|Carlo Karges/);
+  });
+
+  it('drops a heading-less chart preamble link instead of truncating at it', () => {
+    const blackbird = [
+      'Blackbird chords',
+      'The Beatles  1968 (White Album)',
+      'https://en.wikipedia.org/wiki/Blackbird_(Beatles_song)', // preamble link
+      'G         C              G',
+      'Blackbird singing in the dead of night',
+    ].join('\n');
+    const sections = parseSections(blackbird);
+    const dump = JSON.stringify(sections);
+    expect(dump).toContain('Blackbird singing in the dead of night');
+    expect(dump).not.toMatch(/wikipedia|White Album/);
+  });
+
   it('returns nothing for empty input', () => {
     expect(parseSections('')).toEqual([]);
     expect(parseSections('   \n  ')).toEqual([]);
