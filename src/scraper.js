@@ -40,6 +40,41 @@ export async function readFirst(page, selector) {
 }
 
 /**
+ * Strip the trailing " Chords" affordance UG appends to the song's <h1> and trim
+ * surrounding whitespace. The legacy `.replace(' Chords', '')` left the title's
+ * trailing space (the <h1> is "Despacito Chords "), so the returned title carried a
+ * stray space. Anchored to the end, so a song whose name contains "chord" is safe.
+ * @param {string} rawTitle - the raw <h1> textContent
+ * @returns {string} the cleaned song title
+ */
+export function cleanTitle(rawTitle) {
+  return (rawTitle ?? '').replace(/\s*Chords?\s*$/i, '').trim();
+}
+
+/**
+ * Compose the artist credit from the page's artist-link texts. UG repeats the same
+ * artist link (breadcrumb + header), so identical texts are de-duplicated; but a
+ * "feat." collaboration is split across separate links whose texts already carry the
+ * connector ("Luis Fonsi feat. ", "Daddy Yankee"), so the distinct texts are
+ * concatenated in order to rebuild the full credit. readFirst() alone dropped the
+ * featured artist ("Luis Fonsi feat. ").
+ * @param {string[]} texts - textContent of every artist link, in document order
+ * @returns {string} the composed artist credit (untrimmed)
+ */
+export function joinDistinctArtists(texts) {
+  const seen = new Set();
+  let out = '';
+  for (const raw of texts ?? []) {
+    const text = raw ?? '';
+    const key = text.trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out += text;
+  }
+  return out;
+}
+
+/**
  * Resolve the chord-chart text using the configured strategy.
  * @param {import('puppeteer').Page} page
  * @param {string} [strategy=config.scrapeStrategy]
@@ -126,11 +161,13 @@ async function attemptScrape(url) {
 
     const rawText = await extractChordText(page);
     const rawTitle = await readFirst(page, selectors.title);
-    const rawArtist = await readFirst(page, selectors.artist);
+    const artistTexts = await readTexts(page, selectors.artist);
 
-    // Legacy cleaning: strip " Chords" from the title and "Edit" from the artist.
-    let title = rawTitle.replace(' Chords', '');
-    let artist = rawArtist.replace('Edit', '');
+    // Clean the scraped fields: drop the trailing " Chords" from the title and the
+    // stray "Edit" affordance from the artist, compose a "feat." credit split across
+    // multiple artist links (joinDistinctArtists), and trim both.
+    let title = cleanTitle(rawTitle);
+    let artist = joinDistinctArtists(artistTexts).replace('Edit', '').trim();
     if (!title || !artist) {
       const fromDoc = parseTitleFromDocTitle(await page.title());
       if (fromDoc) ({ title, artist } = fromDoc);
@@ -151,12 +188,15 @@ async function attemptScrape(url) {
 }
 
 /**
- * The document title the legacy code produced: `${title}- ${artist}` (note: no
- * space before the dash). Preserved exactly because it feeds the title placeholder.
+ * The document title `${title} - ${artist}`, matching the template placeholder
+ * "Song Title - Artist Name". (Legacy used `${title}- ${artist}` and relied on the
+ * title keeping a trailing space; the title is now trimmed, so the separating space
+ * is explicit. For a clean single-artist title the output is byte-identical, e.g.
+ * "Hurt - Johnny Cash".)
  * @param {string} title - the song title
  * @param {string} artist - the artist name
  * @returns {string} the composed document title
  */
 export function buildDocTitle(title, artist) {
-  return `${title}- ${artist}`;
+  return `${title} - ${artist}`;
 }
