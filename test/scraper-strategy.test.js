@@ -1,4 +1,11 @@
-import { extractChordText, readFirst, isRetryableScrapeError } from '../src/scraper.js';
+import {
+  extractChordText,
+  readFirst,
+  isRetryableScrapeError,
+  cleanTitle,
+  joinDistinctArtists,
+  buildDocTitle,
+} from '../src/scraper.js';
 
 // A strong chord-chart candidate (chords-above-lyrics with section headers).
 const CHART = `[Verse 1]
@@ -85,6 +92,50 @@ describe('readFirst — single-valued field reads', () => {
   it('returns an empty string when nothing matches', async () => {
     const page = makePage({ selectorParts: [] });
     expect(await readFirst(page, 'h1')).toBe('');
+  });
+});
+
+describe('cleanTitle', () => {
+  it('strips the trailing " Chords" and surrounding whitespace', () => {
+    // Real <h1> shapes: "Despacito Chords ", "Hurt Chords " (note the trailing space).
+    expect(cleanTitle('Despacito Chords ')).toBe('Despacito');
+    expect(cleanTitle('Hurt Chords ')).toBe('Hurt');
+    expect(cleanTitle('99 Luftballons Chords')).toBe('99 Luftballons');
+  });
+  it('only strips a trailing "Chords", not the word inside a title', () => {
+    expect(cleanTitle('The Lost Chord Chords ')).toBe('The Lost Chord');
+  });
+  it('handles empty / missing input', () => {
+    expect(cleanTitle('')).toBe('');
+    expect(cleanTitle(null)).toBe('');
+  });
+});
+
+describe('joinDistinctArtists', () => {
+  it('rebuilds a feat. credit split across links (Despacito)', () => {
+    // Real artist-link texts: the connector is baked into the first link.
+    expect(joinDistinctArtists(['Luis Fonsi feat. ', 'Daddy Yankee'])).toBe(
+      'Luis Fonsi feat. Daddy Yankee'
+    );
+  });
+  it('de-duplicates a repeated single artist link', () => {
+    expect(joinDistinctArtists(['Misc Children', 'Misc Children', 'Misc Children'])).toBe(
+      'Misc Children'
+    );
+    expect(joinDistinctArtists(['Johnny Cash'])).toBe('Johnny Cash');
+  });
+  it('ignores blank links and empty input', () => {
+    expect(joinDistinctArtists(['', '  ', 'Nena'])).toBe('Nena');
+    expect(joinDistinctArtists([])).toBe('');
+  });
+});
+
+describe('buildDocTitle', () => {
+  it('joins title and artist with " - " (placeholder style)', () => {
+    expect(buildDocTitle('Hurt', 'Johnny Cash')).toBe('Hurt - Johnny Cash');
+    expect(buildDocTitle('Despacito', 'Luis Fonsi feat. Daddy Yankee')).toBe(
+      'Despacito - Luis Fonsi feat. Daddy Yankee'
+    );
   });
 });
 
