@@ -6,6 +6,7 @@ import {
   pickBestCandidate,
   looksLikePageChrome,
   isChordLegend,
+  isPlausibleChart,
   parseTitleFromDocTitle,
 } from '../src/detect.js';
 
@@ -249,6 +250,21 @@ describe('pickBestCandidate — wrong-block regressions', () => {
         { tag: 'div', text: PAGE_CHROME },
       ])
     ).toBeNull();
+  });
+});
+
+describe('isPlausibleChart', () => {
+  it('accepts a real chords-over-lyrics chart', () => {
+    expect(isPlausibleChart(CHART)).toBe(true);
+  });
+  it('rejects a bare legend, prose, a one-line header, and empty', () => {
+    expect(isPlausibleChart(CHORD_LEGEND)).toBe(false); // chords only, no lyrics/sections
+    expect(isPlausibleChart(BIO)).toBe(false);
+    expect(isPlausibleChart('Blackbird chords  The Beatles 1968')).toBe(false);
+    expect(isPlausibleChart('')).toBe(false);
+  });
+  it('accepts a chord-only chart that still carries section labels', () => {
+    expect(isPlausibleChart('[Intro]\nG  C  D\n[Solo]\nEm  C  G  D')).toBe(true);
   });
 });
 

@@ -189,6 +189,25 @@ export function isChordLegend(stats) {
 }
 
 /**
+ * Whether extracted text is a plausible chord chart: at least two chord lines AND
+ * at least one lyric or section line (real chords-over-lyrics, or chords under a
+ * labelled structure). This is the extraction safety net — it rejects the residue
+ * that can slip past candidate selection (a bare chord legend, a one-line header,
+ * a stray page fragment) so a thin heuristic hit defers to the selector, and a
+ * genuinely empty result fails loudly instead of producing an empty-looking doc.
+ * Deliberately conservative: every real chart clears it, so it never turns a good
+ * scrape into a failure.
+ * @param {string} text
+ * @returns {boolean}
+ */
+export function isPlausibleChart(text) {
+  const stats = analyzeChordText(text);
+  if (stats.chord < 2) return false;
+  const lyric = stats.nonBlank - stats.chord - stats.section;
+  return lyric >= 1 || stats.section >= 1;
+}
+
+/**
  * Choose the best candidate block. Selection is tiered: any scoring <pre> outranks
  * every non-<pre>, because UG (and every chord site) renders the bare chart in a
  * <pre> while the decoys that out-score a tiny chart on raw count — the A–Z artist
