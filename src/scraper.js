@@ -3,7 +3,7 @@
 // deterministically (try/finally), and returns the raw scraped fields.
 
 import { config, selectors } from './config.js';
-import { detectChordBlock, parseTitleFromDocTitle } from './detect.js';
+import { detectChordBlock, parseTitleFromDocTitle, isPlausibleChart } from './detect.js';
 import { openChart, isChallengePage } from './fetcher.js';
 
 /**
@@ -58,8 +58,15 @@ export async function extractChordText(
 
   if (strategy === 'selector') return viaSelector();
   if (strategy === 'auto') return (await viaSelector()) || viaHeuristic();
-  // 'heuristic' (default)
-  return (await viaHeuristic()) || viaSelector();
+  // 'heuristic' (default): prefer a heuristic hit that is a plausible chart; if it
+  // looks thin (a legend/header/fragment slipped through), defer to the selector.
+  // If neither is convincing, return the best-effort non-empty result — the caller
+  // turns a truly empty result into a loud, retryable error, never an empty doc.
+  const heuristic = await viaHeuristic();
+  if (isPlausibleChart(heuristic)) return heuristic;
+  const selector = await viaSelector();
+  if (isPlausibleChart(selector)) return selector;
+  return heuristic || selector;
 }
 
 /**

@@ -63,6 +63,16 @@ describe('extractChordText — strategy wiring', () => {
     const text = await extractChordText(page, 'selector', 5);
     expect(text).toBe(SELECTOR_TEXT);
   });
+
+  it('heuristic: defers to the selector when the heuristic hit is not a plausible chart', async () => {
+    // A block that clears the score threshold (one chord + a section header) yet is
+    // not a real chart (only one chord line). The plausibility net must hand off to
+    // the selector rather than ship the thin hit.
+    const thin = '[Verse]\nG\nsome lyric words here\nmore lyric words\nand even more words';
+    const page = makePage({ candidates: [{ tag: 'div', text: thin }], selectorParts: [CHART] });
+    const text = await extractChordText(page, 'heuristic', 5);
+    expect(text).toBe(CHART);
+  });
 });
 
 describe('readFirst — single-valued field reads', () => {
