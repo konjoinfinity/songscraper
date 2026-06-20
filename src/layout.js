@@ -115,9 +115,15 @@ export function parseSections(rawText) {
     current.lines.push({ kind: classifyLine(raw), text: raw });
   }
   if (sections.length > 0) return sections;
-  // No headings at all — treat content up to the footer as one section.
+  // No headings at all — treat content up to the footer as one section. Drop any
+  // leading preamble (credits, a wiki link, "Tabbed by ...", a capo note) first, so
+  // a footer marker sitting in that preamble can't truncate the whole chart before
+  // it begins. This mirrors the heading branch, which only honors footers once a
+  // real section has started. Anchor on the first chord line; if there is none,
+  // scan from the top (best effort) rather than dropping everything.
+  const firstChord = lines.findIndex((raw) => classifyLine(raw) === 'chord');
   const body = [];
-  for (const raw of lines) {
+  for (const raw of lines.slice(firstChord === -1 ? 0 : firstChord)) {
     if (isFooterLine(raw)) break;
     body.push({ kind: classifyLine(raw), text: raw });
   }

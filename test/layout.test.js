@@ -55,6 +55,43 @@ describe('parseSections', () => {
     expect(sections[0].heading).toBeNull();
   });
 
+  // Regression: a heading-less chart whose preamble contains a footer marker (a
+  // "Tabbed by ..." credit or a wiki link) was truncated to its first line because
+  // the no-heading branch honored the footer before the chart began. The preamble
+  // must be dropped and the whole body kept. Real shapes from the Old MacDonald and
+  // Blackbird (no [section] headers) pages.
+  it('keeps the body of a heading-less chart whose preamble holds a footer marker', () => {
+    const oldMacDonald = [
+      'Old MacDonald (Had A Farm) - Nursery rhyme',
+      'Tabbed by Del Bradley', // footer marker, but it is preamble — must not cut here
+      'No CAPO or to taste',
+      'A             D     A',
+      'Old MacDonald had a farm,',
+      'A    E    A',
+      'Ee i ee i oh!',
+    ].join('\n');
+    const sections = parseSections(oldMacDonald);
+    const dump = JSON.stringify(sections);
+    expect(dump).toContain('Old MacDonald had a farm,');
+    expect(dump).toContain('Ee i ee i oh!');
+    // Preamble (including the bare "Tabbed by" credit) is dropped.
+    expect(dump).not.toMatch(/Tabbed by|to taste/);
+  });
+
+  it('drops a heading-less chart preamble link instead of truncating at it', () => {
+    const blackbird = [
+      'Blackbird chords',
+      'The Beatles  1968 (White Album)',
+      'https://en.wikipedia.org/wiki/Blackbird_(Beatles_song)', // preamble link
+      'G         C              G',
+      'Blackbird singing in the dead of night',
+    ].join('\n');
+    const sections = parseSections(blackbird);
+    const dump = JSON.stringify(sections);
+    expect(dump).toContain('Blackbird singing in the dead of night');
+    expect(dump).not.toMatch(/wikipedia|White Album/);
+  });
+
   it('returns nothing for empty input', () => {
     expect(parseSections('')).toEqual([]);
     expect(parseSections('   \n  ')).toEqual([]);
