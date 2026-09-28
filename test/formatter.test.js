@@ -86,6 +86,36 @@ describe('formatter — style pass (pass 2)', () => {
     const requests = buildStyleRequests(col1Content, null);
     expect(requests).toHaveLength(2);
   });
+
+  it('stays aligned past a blank separator between sections (non-zero-width "\\n" paragraph)', () => {
+    const { buildStyleRequests } = createFormatter({
+      rawText: '[Verse 1]\nG  C\nhello there\n[Chorus]\nD  Em\nla la la',
+      title: 'T- A',
+    });
+    // col1 rendered lines: section "Verse 1", chord "G  C", lyric "hello there",
+    // blank separator, section "Chorus", chord "D  Em", lyric "la la la". A real
+    // Google Doc's blank-line paragraph still spans one character (its own "\n"),
+    // startIndex < endIndex — not the zero-width shape the other tests use.
+    const col1Content = [
+      makeLine('Verse 1\n', 10, 18),
+      makeLine('G  C\n', 18, 23),
+      makeLine('hello there\n', 23, 35),
+      makeLine('\n', 35, 36), // blank separator — non-zero-width, must still be excluded
+      makeLine('Chorus\n', 36, 43),
+      makeLine('D  Em\n', 43, 49),
+      makeLine('la la la\n', 49, 58),
+    ];
+    const requests = buildStyleRequests(col1Content, null);
+    expect(requests.map((r) => r.updateTextStyle.textStyle.bold)).toEqual([
+      true, // Verse 1 (section)
+      true, // G  C (chord)
+      false, // hello there (lyric)
+      true, // Chorus (section)
+      true, // D  Em (chord)
+      false, // la la la (lyric)
+    ]);
+    expect(requests[3].updateTextStyle.range).toEqual({ startIndex: 36, endIndex: 43 });
+  });
 });
 
 describe('formatter — golden regression', () => {

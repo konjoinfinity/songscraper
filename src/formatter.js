@@ -47,7 +47,16 @@ function styleCellByOrder(cellContent, renderLines) {
   if (!cellContent) return [];
   const paragraphs = cellContent.filter((entry) => {
     const element = entry.paragraph?.elements?.[0];
-    return element && element.startIndex != null && element.startIndex < element.endIndex;
+    if (!element || element.startIndex == null || element.startIndex >= element.endIndex) {
+      return false;
+    }
+    // A blank separator line between sections is not zero-width in a real Google
+    // Doc — it still spans one character (the paragraph's own "\n"), so the index
+    // check above alone lets it through. Exclude it by content, same as `lines`
+    // below (`line.text.trim() !== ''`), so paragraph N still lines up with
+    // rendered line N past every section boundary.
+    const text = element.textRun?.content;
+    return text != null && text.trim() !== '';
   });
   const lines = renderLines.filter((line) => line.text.trim() !== '');
   if (paragraphs.length !== lines.length) {
