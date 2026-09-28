@@ -201,6 +201,61 @@ http://songscraper.tailXXXXXX.ts.net:8080/scrape      # the 100.x.y.z Tailscale 
 `tailscaled` is enabled, and the Pi stays authenticated across reboots, so it re-joins the tailnet
 automatically — no re-auth needed. Full Shortcut build: **[MOBILE.md](MOBILE.md)**.
 
+### Reauth remotely over Tailscale (no SSH tunnel)
+
+The "plain `http` is fine" note above is about *transport* — WireGuard already encrypts it. Google's
+OAuth flow has a separate, unrelated rule: it only accepts `localhost` as a redirect URI over plain
+`http` — anything else, including a Tailscale hostname, has to be `https`. So `/auth` itself is
+reachable over Tailscale either way, but the URL Google redirects back to (`/oauth2callback`) needs
+`https` once it isn't `localhost`. [Tailscale Serve](https://tailscale.com/kb/1312/serve) gives the
+MagicDNS name a real Let's Encrypt cert for exactly this, and it's part of the base (free) plan — no
+paid tier required.
+
+**One-time setup**, once Tailscale is already up on the Pi (above):
+
+```bash
+# In the admin console (one time): https://login.tailscale.com/admin/dns -> enable "HTTPS Certificates"
+
+# On the Pi — proxy the local service behind that cert on the MagicDNS name. The exact flag has
+# changed across Tailscale CLI versions — check `tailscale serve --help` if this errors:
+sudo tailscale serve --bg 8080
+# older CLI syntax:
+sudo tailscale serve https / http://localhost:8080
+
+tailscale serve status     # confirm the mapping
+```
+
+This makes the whole service reachable at `https://songscraper.<tailnet>.ts.net/...` (port 443, no
+`:8080` needed), with a real cert. Hitting `/healthz` there is a quick sanity check before touching
+OAuth.
+
+**Register the new redirect URI** — Google Cloud Console → APIs & Services → Credentials → your OAuth
+client → Authorized redirect URIs → add:
+
+```
+https://songscraper.<tailnet>.ts.net/oauth2callback
+```
+
+(Leave `http://localhost:8080/oauth2callback` registered too — harmless, and keeps the SSH-tunnel path
+as a fallback.)
+
+**Point the service at it** — in `.env` on the Pi:
+
+```bash
+OAUTH_REDIRECT_URI=https://songscraper.<tailnet>.ts.net/oauth2callback
+```
+
+```bash
+sudo systemctl restart songscraper
+```
+
+**Reauth from your phone, anywhere:** toggle Tailscale on, open
+`https://songscraper.<tailnet>.ts.net/auth`, complete Google's consent — `/oauth2callback` returns the
+new `refresh_token` as JSON. That value still has to land in the Pi's `.env` and trigger a restart (the
+app never writes it to disk itself — see `CLAUDE.md`'s "No secrets in code" constraint); with your phone
+already on the tailnet, any SSH client (e.g. Termius) can reach `songscraper.<tailnet>.ts.net` on port
+22 directly with your existing key — no port-forward tunnel needed anymore.
+
 ---
 
 ## Troubleshooting
